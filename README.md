@@ -14,4 +14,8 @@ A fortran 2003 compatible compiler.
 # TODO CODE #
 
 # Notes #
+This code utilizes the Misra and Gries edge coloring algorithm.
+Info can be found here:
+https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
 
+https://en.wikipedia.org/wiki/Misra_%26_Gries_edge_coloring_algorithm
