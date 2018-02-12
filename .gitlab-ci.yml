@@ -1,0 +1,70 @@
+stages:
+  - build
+  - warnconv
+  - test
+  - memleaks
+
+.build_template: &build_definition
+  stage: build
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - cmake -F "Unix Makefiles" ..
+    - make
+
+GQMCT_Wheezy:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-gfortran-blas-lapack
+  <<: *build_definition
+
+GQMCT_Jessie:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-gfortran-blas-lapack
+  <<: *build_definition
+
+GQMCT_Stretch:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-stretch-gfortran-blas-lapack
+  <<: *build_definition
+
+GQMCT_Wheezy_OpenBlas:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-gfortran-openblas-lapack
+  <<: *build_definition
+
+GQMCT_Jessie_OpenBlas:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-gfortran-openblas-lapack
+  <<: *build_definition
+
+GQMCT_Stretch_OpenBlas:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-stretch-gfortran-openblas-lapack
+  <<: *build_definition
+
+GQMCT_CentOS:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:centos-7-gfortran-blas-lapack
+  <<: *build_definition
+
+GQMCT_OpenSuse-13.2:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:opensuse-13.2-gfortran-blas-lapack
+  <<: *build_definition
+
+GQMCT_OpenSuse-42.1:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:opensuse-42.1-gfortran-blas-lapack
+  <<: *build_definition
+
+GQMCT_Wheezy-PGI:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-pgi
+  <<: *build_definition
+
+GQMCT_Jessie-PGI:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-pgi
+  <<: *build_definition
+
+GQMCT_Ubuntu_Trusty:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:trusty-gfortran-lapack
+  <<: *build_definition
+
+GQMCT_Ubuntu_Xenial:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:xenial-gfortran-lapack
+  <<: *build_definition
+
+GQMCT_Ubuntu_Bionic:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:bionic-beaver-gfortran-lapack
+  <<: *build_definition
+
