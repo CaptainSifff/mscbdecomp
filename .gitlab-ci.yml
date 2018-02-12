@@ -12,59 +12,62 @@ stages:
     - cmake -F "Unix Makefiles" ..
     - make
 
-GQMCT_Wheezy:
+mscbdecomp_Wheezy:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-gfortran-blas-lapack
   <<: *build_definition
 
-GQMCT_Jessie:
+mscbdecomp_Jessie:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-gfortran-blas-lapack
   <<: *build_definition
 
-GQMCT_Stretch:
+mscbdecomp_Stretch:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-stretch-gfortran-blas-lapack
   <<: *build_definition
 
-GQMCT_Wheezy_OpenBlas:
+mscbdecomp_Wheezy_OpenBlas:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-gfortran-openblas-lapack
   <<: *build_definition
 
-GQMCT_Jessie_OpenBlas:
+mscbdecomp_Jessie_OpenBlas:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-gfortran-openblas-lapack
   <<: *build_definition
 
-GQMCT_Stretch_OpenBlas:
+mscbdecomp_Stretch_OpenBlas:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-stretch-gfortran-openblas-lapack
   <<: *build_definition
 
-GQMCT_CentOS:
+mscbdecomp_CentOS:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:centos-7-gfortran-blas-lapack
   <<: *build_definition
 
-GQMCT_OpenSuse-13.2:
+mscbdecomp_OpenSuse-13.2:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:opensuse-13.2-gfortran-blas-lapack
   <<: *build_definition
 
-GQMCT_OpenSuse-42.1:
+mscbdecomp_OpenSuse-42.1:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:opensuse-42.1-gfortran-blas-lapack
   <<: *build_definition
 
-GQMCT_Wheezy-PGI:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-pgi
-  <<: *build_definition
+mscbdecomp_Stretch_PGI1710:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:stretch-pgi1710-cmake-blas-lapack-fftw-hdf5-scipy
+  type: build
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - export PGI=/opt/pgi
+    - export PATH=/opt/pgi/linux86-64/17.10/bin:$PATH
+    - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_Fortran_COMPILER=pgfortran -DCMAKE_CXX_COMPILER=pgc++ ..
+    - cmake --build . --target mscbdecomp --config Release
 
-GQMCT_Jessie-PGI:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-pgi
-  <<: *build_definition
-
-GQMCT_Ubuntu_Trusty:
+mscbdecomp_Ubuntu_Trusty:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:trusty-gfortran-lapack
   <<: *build_definition
 
-GQMCT_Ubuntu_Xenial:
+mscbdecomp_Ubuntu_Xenial:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi:xenial-gfortran-lapack
   <<: *build_definition
 
-GQMCT_Ubuntu_Bionic:
+mscbdecomp_Ubuntu_Bionic:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:bionic-beaver-gfortran-lapack
   <<: *build_definition
 
