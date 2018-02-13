@@ -22,7 +22,7 @@
 
 program mscbdecomp
     implicit none
-    integer :: ndim, i, j, k
+    integer :: ndim, i, j, k, deltag, cnt
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: TMP !< A temporary matrix
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: v !< the vector that we will test on
@@ -50,7 +50,15 @@ program mscbdecomp
             endif
         enddo
     enddo
-
-    write (*,*) "Hello, world."
+! calculate Vertex degree
+    deltag = 0;
+    do i = 1, ndim
+        cnt = 0
+        do j = 1, ndim
+            if(A(i, j) /= 0.D0) cnt = cnt +1
+        enddo
+        deltag = max(deltag, cnt)
+    enddo
+    write (*,*) "Delta(G) = ", deltag
 
 end program mscbdecomp
