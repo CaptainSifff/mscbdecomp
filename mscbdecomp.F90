@@ -20,83 +20,21 @@
 ! FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 ! DEALINGS IN THE SOFTWARE.
 
-!--------------------------------------------------------------------
-!> @author
-!> Florian Goth
-!
-!> @brief 
-!> This function returns the smallest available color at a vertex
-!
-!> @param[in] v The vertex that we consider
-!> @param[in] edgecolors the array with the coloring state
-!> @param[in] maxcolors The available maximum number colors
-!> @return the smallest available color
-!--------------------------------------------------------------------
-
-function findfreecolor(v, degv, w, degw edgecolors, maxcolor) result(c)
-    implicit none
-    integer, intent(in) :: v, degv, w, degw, maxcolor
-    integer, dimension(:), intent(in) :: edgecolors
-    integer, intent(out) :: c
-    integer, allocatable, dimension(:) :: usedcols
-    integer :: maxdeg, i
-    
-    maxdeg = max(degv, degw)
-    allocate(usedcols(maxdeg))
-    usedcols = 0
-    do i = 1, degv
-        if (edgecolors(v * maxcolor + i) /= 0) usedcols(edgecolors(v * maxcolor + i)) = 1
-    enddo
-    do i = 1, degw
-        if (edgecolors(w * maxcolor + i) /= 0) usedcols(edgecolors(w * maxcolor + i)) = 1
-    enddo
-    ! The point where we find zeroes in this array are colors that are unused in both vertices
-    
-    do i = maxdeg, 1, -1
-        if (usedcols[i] == 0) c = i
-    enddo
-    deallocate(usedcols)
-end function freecolor
-
-!--------------------------------------------------------------------
-!> @author
-!> Florian Goth
-!
-!> @brief 
-!> This function returns the smallest available color at a vertex
-!
-!> @param[in] v The vertex that we consider
-!> @param[in] edgecolors the array with the coloring state
-!> @param[in] maxcolors The available maximum number colors
-!> @return the smallest available color
-!--------------------------------------------------------------------
-
-function findfreeedge(v, degree, edgecolors, maxcolors) result(c)
-    implicit none
-    integer, intent(in) :: v, degree, maxcolors
-    integer, dimension(:), intent(in) :: edgecolors
-    integer, intent(out) :: edge
-    integer :: i
-    edge = -1
-    do i = degree, 1, -1
-        if (edgecolors(maxcolors*i) == 0.D0) edge = i !> Not yet used edge found
-    enddo
-
-end function findfreeedge
-
 program mscbdecomp
+    use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, deltag, cnt, vleg, wleg, maxcolors
-    real(kind=kind(0.D0) :: hop
+    integer :: ndim, i, j, k, deltag, cnt, maxcolors
+    integer :: availablecolor
+    real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: TMP !< A temporary matrix
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec !< the vector that we will test on
-    integer, allocatable, dimension(:) :: edgecolors !< the array where we store the edge colors
-    integer, allocatable, dimension(:) :: degrees !< Here we store the edge degree of a particular vertex
+    type(Vertex), allocatable, dimension(:) :: verts
+    logical :: check
     ! initialize A with some data
     ndim = 10
     hop = 0.5
-    allocate(A(ndim, ndim), tmp(ndim, ndim), vec(ndim), degrees(ndim))
+    allocate(A(ndim, ndim), tmp(ndim, ndim), vec(ndim))
     do i = 1, ndim-1
         A(i,i+1) = hop
         A(i+1,i) = hop
@@ -118,6 +56,7 @@ program mscbdecomp
             endif
         enddo
     enddo
+    allocate(verts(ndim))
 ! calculate Vertex degree
     deltag = 0;
     do i = 1, ndim
@@ -125,16 +64,19 @@ program mscbdecomp
         do j = 1, ndim
             if(A(i, j) /= 0.D0) cnt = cnt +1
         enddo
-        degrees(i) = cnt
+        call verts(i)%init(cnt)
+        k = 1
+        do j = 1, ndim
+            if(A(i, j) /= 0.D0) then
+                verts(i)%nbrs(k) = j
+                k = k + 1
+            endif
+        enddo
         deltag = max(deltag, cnt)
     enddo
     write (*,*) "Delta(G) = ", deltag
     maxcolors = deltag + 1
 
-    ! set up storage foer the edge colors
-    ! Since we know the maximum degree, we can over-estimate the use and use a linear array
-    ! We encode an unused color at an edge as 0 else we use integers from [1, Delta(G) + 1]
-    allocate(edgecolors((deltag+1)*ndim))
     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
     ! we obtain the edges by looking in the upper triangular part of the matrix for non-zero entries
     do i = 1, ndim-1
@@ -142,14 +84,24 @@ program mscbdecomp
         if (A(i, j) /= 0.D0) then
         ! Edge found between vertex i and j
         ! Let's check wether we have free edges at every vertex
-            vleg = findfreeedge(i, degree(i), edgecolors, maxcolors)
-            wleg = findfreeedge(j, degree(j), edgecolors, maxcolors)
-            if ((vleg == -1) .or. (wleg == -1)) then
+! A debugging check that the data is consistent:
+ check = .false.
+do k = 1, verts(i)%degree
+ if (verts(i)%nbrs(k) == j) check = .true.
+enddo
+if(check .eqv. .false.) then
+write(*,*) "inconsistent data!"
+STOP
+endif
+            availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
+            if(availablecolor == 0) then
             ! One of the vertices has no free color -> we don't know what to do yet.
             endif
-            
+            write(*,*) availablecolor
+            ! set that color
         endif
         enddo
     enddo
-
 end program mscbdecomp
+
+
