@@ -8,6 +8,7 @@ module vertex_mod
         procedure :: init => vertex_init
         procedure :: destruct => vertex_destruct
         procedure :: any_color_available => vertex_any_color_available
+        procedure :: set_edge_color => vertex_set_edge_color
     end type Vertex
 contains
 subroutine vertex_init(this, deg)
@@ -17,6 +18,16 @@ subroutine vertex_init(this, deg)
     allocate(this%nbrs(deg), this%cols(deg))
     this%cols = 0
 end subroutine vertex_init
+
+subroutine vertex_set_edge_color(this, vert, col)
+    class(vertex) :: this
+    integer, intent(in) :: vert, col
+    integer :: i
+    
+    do i = 1, this%degree
+        if(this%nbrs(i) == vert) this%cols(i) = col
+    enddo
+end subroutine vertex_set_edge_color
 
 subroutine vertex_destruct(this)
     class(vertex) :: this

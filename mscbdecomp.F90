@@ -39,6 +39,10 @@ program mscbdecomp
         A(i,i+1) = hop
         A(i+1,i) = hop
     enddo
+    do i = 1, ndim-2
+        A(i,i+2) = hop
+        A(i+2,i) = hop
+    enddo
 ! check input
     ! first check diagonal
     do i = 1, ndim
@@ -99,9 +103,18 @@ endif
             endif
             write(*,*) availablecolor
             ! set that color
+            call verts(i)%set_edge_color(j, availablecolor);
+            call verts(j)%set_edge_color(i, availablecolor);
         endif
         enddo
     enddo
+    
+    do i = 1, ndim
+        do j = 1, verts(i)%degree
+        write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
+        enddo
+    enddo
+    
 end program mscbdecomp
 
 
