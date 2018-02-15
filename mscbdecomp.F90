@@ -23,7 +23,7 @@
 program mscbdecomp
     use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, deltag, cnt, maxcolors
+    integer :: ndim, i, j, k, deltag, cnt, maxcolors, usedcolors
     integer :: availablecolor
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
@@ -108,7 +108,20 @@ endif
         endif
         enddo
     enddo
-    
+! Determine the number of used colors
+    usedcolors = deltag
+    do i = 1, ndim
+        do j = 1, verts(i)%degree
+            if (verts(i)%cols(j) == deltag + 1) usedcolors = deltag + 1
+        enddo
+    enddo
+    if (usedcolors == deltag) then
+        write(*,*) "Maximum Degree", deltag, ". Found", usedcolors," Families -> optimal decomposition"
+    else
+        write(*,*) "Maximum Degree", deltag, ". Found", usedcolors," Families"
+    endif
+! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
+! exponentiated variants.
     do i = 1, ndim
         do j = 1, verts(i)%degree
         write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
@@ -116,5 +129,3 @@ endif
     enddo
     
 end program mscbdecomp
-
-
