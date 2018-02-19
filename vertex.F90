@@ -1,5 +1,16 @@
 module vertex_mod
     implicit none
+    type :: SingleColExp
+    contains
+        procedure :: init => SingleColExp_init
+    end type
+    
+    type :: FullExp
+        integer :: nrofcols
+    contains
+        procedure :: init => FullExp_init
+    end type FullExp
+    
     type :: Vertex
         integer :: degree
         integer, allocatable, dimension(:) :: nbrs
@@ -11,6 +22,15 @@ module vertex_mod
         procedure :: set_edge_color => vertex_set_edge_color
     end type Vertex
 contains
+
+subroutine SingleColExp_init(this)
+    class(SingleColExp) :: this
+end subroutine SingleColExp_init
+
+subroutine FullExp_init(this)
+    class(FullExp) :: this
+end subroutine FullExp_init
+
 subroutine vertex_init(this, deg)
     class(vertex) :: this
     integer, intent(in) :: deg
