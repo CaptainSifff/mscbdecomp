@@ -1,22 +1,32 @@
 module vertex_mod
     implicit none
-    
+
+        type :: simplenode
+        integer :: x,y
+        complex (kind=kind(0.d0)) :: axy
+    end type simplenode
+
     type :: node
         integer :: x,y, col
         complex (kind=kind(0.d0)) :: axy
     end type node
-    
+
     type :: SingleColExp
+        integer :: nrofentries
+        type(simplenode), dimension(:), allocatable :: nodes
     contains
         procedure :: init => SingleColExp_init
+        procedure :: dealloc => SingleColExp_dealloc
+        procedure :: mult => SingleColExp_mult
     end type
-    
+
     type :: FullExp
         integer :: nrofcols
         type(SingleColExp), dimension(:), allocatable :: singleexps
     contains
         procedure :: init => FullExp_init
         procedure :: dealloc => FullExp_dealloc
+        procedure :: mult => FullExp_mult
     end type FullExp
     
     type :: Vertex
@@ -31,18 +41,48 @@ module vertex_mod
     end type Vertex
 contains
 
+subroutine SingleColExp_mult(this, vec)
+    class(SingleColExp) :: this
+    complex(kind=kind(0.D0)), dimension(:) :: vec
+    integer :: i, j
+    
+end subroutine SingleColExp_mult
+
 subroutine SingleColExp_init(this, nodes, nredges)
     class(SingleColExp) :: this
     type(node), dimension(:), intent(in) :: nodes
     integer, intent(in) :: nredges
     integer :: i
-    i = 2
+    allocate(this%nodes(nredges))
+    write(*,*) "Setting up strict. sparse matrix with ", nredges, "edges"
+    do i = 1, nredges
+        this%nodes(i)%x = nodes(i)%x
+        this%nodes(i)%y = nodes(i)%y
+        this%nodes(i)%axy = nodes(i)%axy
+    enddo
+! All nodes that we have been passed are now from a single color.
+! They constitute now a strictly sparse matrix.
+! Further processing of the entries could be done here.
 end subroutine SingleColExp_init
+
+subroutine SingleColExp_dealloc(this)
+    class(SingleColExp) :: this
+    deallocate(this%nodes)
+end subroutine SingleColExp_dealloc
 
 subroutine FullExp_dealloc(this)
     class(FullExp) :: this
     deallocate(this%singleexps)
 end subroutine FullExp_dealloc
+
+subroutine FullExp_mult(this, vec)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:) :: vec
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%mult(vec)
+    enddo
+end subroutine FullExp_mult
 
 subroutine FullExp_init(this, nodes, usedcolors)
     class(FullExp) :: this

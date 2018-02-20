@@ -23,26 +23,29 @@
 program mscbdecomp
     use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, deltag, cnt, maxcolors, usedcolors
-    integer :: availablecolor
+    integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
+    integer :: availablecolor, nredges
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: TMP !< A temporary matrix
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec !< the vector that we will test on
     type(Vertex), allocatable, dimension(:) :: verts
     logical :: check
+    type(node), allocatable, dimension(:) :: nodes
+    type(FullExp) :: fe
     ! initialize A with some data
     ndim = 10
     hop = 0.5
+    nredges = 0
     allocate(A(ndim, ndim), tmp(ndim, ndim), vec(ndim))
     do i = 1, ndim-1
         A(i,i+1) = hop
         A(i+1,i) = hop
     enddo
-    do i = 1, ndim-2
-        A(i,i+2) = hop
-        A(i+2,i) = hop
-    enddo
+!     do i = 1, ndim-2
+!         A(i,i+2) = hop
+!         A(i+2,i) = hop
+!     enddo
 ! check input
     ! first check diagonal
     do i = 1, ndim
@@ -88,6 +91,7 @@ program mscbdecomp
         if (A(i, j) /= 0.D0) then
         ! Edge found between vertex i and j
         ! Let's check wether we have free edges at every vertex
+            nredges = nredges + 1
 ! A debugging check that the data is consistent:
  check = .false.
 do k = 1, verts(i)%degree
@@ -120,12 +124,32 @@ endif
     else
         write(*,*) "Maximum Degree", deltag, ". Found", usedcolors," Families"
     endif
-! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
-! exponentiated variants.
-    do i = 1, ndim
-        do j = 1, verts(i)%degree
-        write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
+! set up data in an edges based layout
+k = 0
+allocate( nodes(nredges))
+    do i = 1, ndim-1
+        do j = i+1, ndim
+        if (A(i, j) /= 0.D0) then
+            k = k + 1
+            nodes(k)%x = i
+            nodes(k)%y = j
+            nodes(k)%axy = A(i,j)
+            do l = 1, verts(i)%degree
+                if(verts(i)%nbrs(l) == j) nodes(k)%col = verts(i)%cols(l)
+            enddo
+        endif
         enddo
     enddo
-    
+    call fe%init(nodes, usedcolors)
+
+! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
+! exponentiated variants.
+!     do i = 1, ndim
+!         do j = 1, verts(i)%degree
+!         write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
+!         enddo
+!     enddo
+vec = 1.D0
+  call fe%mult(vec)
+  write (*,*) vec
 end program mscbdecomp
