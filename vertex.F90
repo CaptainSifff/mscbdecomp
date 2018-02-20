@@ -1,5 +1,11 @@
 module vertex_mod
     implicit none
+    
+    type :: node
+        integer :: x,y, col
+        complex (kind=kind(0.d0)) :: axy
+    end type node
+    
     type :: SingleColExp
     contains
         procedure :: init => SingleColExp_init
@@ -7,8 +13,10 @@ module vertex_mod
     
     type :: FullExp
         integer :: nrofcols
+        type(SingleColExp), dimension(:), allocatable :: singleexps
     contains
         procedure :: init => FullExp_init
+        procedure :: dealloc => FullExp_dealloc
     end type FullExp
     
     type :: Vertex
@@ -23,12 +31,50 @@ module vertex_mod
     end type Vertex
 contains
 
-subroutine SingleColExp_init(this)
+subroutine SingleColExp_init(this, nodes, nredges)
     class(SingleColExp) :: this
+    type(node), dimension(:), intent(in) :: nodes
+    integer, intent(in) :: nredges
+    integer :: i
+    i = 2
 end subroutine SingleColExp_init
 
-subroutine FullExp_init(this)
+subroutine FullExp_dealloc(this)
     class(FullExp) :: this
+    deallocate(this%singleexps)
+end subroutine FullExp_dealloc
+
+subroutine FullExp_init(this, nodes, usedcolors)
+    class(FullExp) :: this
+    type(node), dimension(:), intent(in) :: nodes
+    integer, intent(in) :: usedcolors
+    integer, dimension(:), allocatable :: nredges, edgectr
+    integer :: i, maxedges
+    type(node), dimension(:, :), allocatable :: simplenodes
+    write(*,*) "Setting up Full Checkerboard exponential."
+    ! Determine the number of matrix entries in each family
+    allocate (nredges(usedcolors), edgectr(usedcolors))
+    nredges = 0
+    this%nrofcols = usedcolors
+    do i = 1, size(nodes)
+        nredges(nodes(i)%col) = nredges(nodes(i)%col) + 1
+    enddo
+    maxedges = maxval(nredges)
+    edgectr = 1
+    allocate(simplenodes(usedcolors, maxedges))
+    do i = 1, size(nodes)
+        simplenodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
+        edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
+    enddo
+    do i = 1, usedcolors
+    write (*,*) edgectr(i), nredges(i)
+    enddo
+    allocate(this%singleexps(usedcolors))
+    do i = 1, usedcolors
+        call this%singleexps(i)%init(simplenodes(i, :), nredges(i))
+    enddo
+    deallocate(simplenodes)
+    deallocate(nredges, edgectr)
 end subroutine FullExp_init
 
 subroutine vertex_init(this, deg)
