@@ -7,6 +7,6 @@ SET(LAPACK_LIBRARIES ${LAPACK_LIBRARIES} CACHE INTERNAL "LAPACK LIBS" FORCE)
 
 add_executable ( mscbdecomp mscbdecomp.F90 vertex.F90)
 target_link_libraries(mscbdecomp ${LAPACK_LIBRARIES})
-target_link_libraries(mscbdecomp "-llapack -lblas -Wall")
+target_link_libraries(mscbdecomp "-llapack -lblas")
 
 
