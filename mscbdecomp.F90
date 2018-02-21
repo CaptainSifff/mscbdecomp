@@ -24,28 +24,32 @@ program mscbdecomp
     use vertex_mod
     implicit none
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
-    integer :: availablecolor, nredges
+    integer :: availablecolor, nredges, dn, IERR, incx
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
-    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: TMP !< A temporary matrix
-    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec !< the vector that we will test on
+    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U !< A temporary matrix
+    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec, lwork, rwork, res, res2 !< the vector that we will test on
+    real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
+    
     type(Vertex), allocatable, dimension(:) :: verts
     logical :: check
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
+    real(kind=kind(0.D0)) :: dznrm2
+    complex(kind=kind(0.D0)) :: alpha, beta
     ! initialize A with some data
-    ndim = 10
-    hop = 0.5
+    ndim = 5000
+    hop = 0.1
     nredges = 0
-    allocate(A(ndim, ndim), tmp(ndim, ndim), vec(ndim))
+    allocate(A(ndim, ndim), U(ndim, ndim), vec(ndim), energ(ndim))
     do i = 1, ndim-1
         A(i,i+1) = hop
         A(i+1,i) = hop
     enddo
-!     do i = 1, ndim-2
-!         A(i,i+2) = hop
-!         A(i+2,i) = hop
-!     enddo
+    do i = 1, ndim-2
+        A(i,i+2) = hop
+        A(i+2,i) = hop
+    enddo
 ! check input
     ! first check diagonal
     do i = 1, ndim
@@ -144,12 +148,33 @@ allocate( nodes(nredges))
 
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
-!     do i = 1, ndim
-!         do j = 1, verts(i)%degree
-!         write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
-!         enddo
-!     enddo
+    do i = 1, ndim
+        do j = 1, verts(i)%degree
+        write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
+        enddo
+    enddo
 vec = 1.D0
   call fe%mult(vec)
   write (*,*) vec
+  write(*,*) "generating comparison data"
+  res = vec
+  vec = 1
+  dn = 3*ndim
+ allocate(lwork(dn), rwork(dn), res2(ndim))
+   call zheev('V', 'U', ndim, A, ndim, energ, lwork, dn, rwork, IERR)
+   deallocate(lwork, rwork)
+   energ = exp(energ)
+   ! apply to vec
+   alpha = 1.D0
+   beta = 0.D0
+   incx = 1
+   call ZGEMV('C', ndim, ndim, alpha, A, ndim, vec, incx, beta, res2, incx)
+   do i = 1, ndim
+        res2(i) = res2(i) * energ(i)
+   enddo
+   call ZGEMV('N', ndim, ndim, alpha, A, ndim, res2, incx, beta, vec, incx)
+   write(*, *) vec
+   res2 = res-vec
+!    write (*,*) res2
+   write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
 end program mscbdecomp

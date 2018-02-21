@@ -45,7 +45,13 @@ subroutine SingleColExp_mult(this, vec)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i, j
-    
+    complex(kind=kind(0.D0)) :: t1,t2
+    do i = 1, this%nrofentries! for every matrix
+        t1 = vec(this%nodes(i)%x)
+        t2 = vec(this%nodes(i)%y)
+        vec(this%nodes(i)%x) = cosh(this%nodes(i)%axy) * t1 + sinh(this%nodes(i)%axy)* t2
+        vec(this%nodes(i)%y) = cosh(this%nodes(i)%axy) * t2 + sinh(this%nodes(i)%axy)* t1
+    enddo
 end subroutine SingleColExp_mult
 
 subroutine SingleColExp_init(this, nodes, nredges)
@@ -54,6 +60,7 @@ subroutine SingleColExp_init(this, nodes, nredges)
     integer, intent(in) :: nredges
     integer :: i
     allocate(this%nodes(nredges))
+    this%nrofentries = nredges
     write(*,*) "Setting up strict. sparse matrix with ", nredges, "edges"
     do i = 1, nredges
         this%nodes(i)%x = nodes(i)%x
