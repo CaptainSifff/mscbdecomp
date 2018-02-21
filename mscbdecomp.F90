@@ -27,7 +27,7 @@ program mscbdecomp
     integer :: availablecolor, nredges, dn, IERR, incx
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
-    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U !< A temporary matrix
+    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec, lwork, rwork, res, res2 !< the vector that we will test on
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
@@ -35,13 +35,13 @@ program mscbdecomp
     logical :: check
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
-    real(kind=kind(0.D0)) :: dznrm2
+    real(kind=kind(0.D0)) :: dznrm2, zlange
     complex(kind=kind(0.D0)) :: alpha, beta
     ! initialize A with some data
-    ndim = 5000
+    ndim = 1024
     hop = 0.1
     nredges = 0
-    allocate(A(ndim, ndim), U(ndim, ndim), vec(ndim), energ(ndim))
+    allocate(A(ndim, ndim), U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
     do i = 1, ndim-1
         A(i,i+1) = hop
         A(i+1,i) = hop
@@ -148,33 +148,49 @@ allocate( nodes(nredges))
 
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
-    do i = 1, ndim
-        do j = 1, verts(i)%degree
-        write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
-        enddo
-    enddo
-vec = 1.D0
-  call fe%mult(vec)
-  write (*,*) vec
-  write(*,*) "generating comparison data"
-  res = vec
-  vec = 1
-  dn = 3*ndim
- allocate(lwork(dn), rwork(dn), res2(ndim))
-   call zheev('V', 'U', ndim, A, ndim, energ, lwork, dn, rwork, IERR)
-   deallocate(lwork, rwork)
-   energ = exp(energ)
-   ! apply to vec
-   alpha = 1.D0
-   beta = 0.D0
-   incx = 1
-   call ZGEMV('C', ndim, ndim, alpha, A, ndim, vec, incx, beta, res2, incx)
-   do i = 1, ndim
-        res2(i) = res2(i) * energ(i)
-   enddo
-   call ZGEMV('N', ndim, ndim, alpha, A, ndim, res2, incx, beta, vec, incx)
-   write(*, *) vec
-   res2 = res-vec
-!    write (*,*) res2
-   write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+! ! ! !     do i = 1, ndim
+! ! ! !         do j = 1, verts(i)%degree
+! ! ! !         write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
+! ! ! !         enddo
+! ! ! !     enddo
+! ! ! ! vec = 1.D0
+! ! ! !   call fe%vecmult(vec)
+! ! ! ! !  write (*,*) vec
+! ! ! ! !  write(*,*) "generating comparison data"
+! ! ! !   res = vec
+! ! ! !   vec = 1
+! ! ! !   dn = 3*ndim
+! ! ! !  allocate(lwork(dn), rwork(dn), res2(ndim))
+! ! ! !    U = A
+! ! ! !    call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
+! ! ! !    deallocate(lwork, rwork)
+! ! ! !    energ = exp(energ)
+! ! ! !    ! apply to vec
+! ! ! !    alpha = 1.D0
+! ! ! !    beta = 0.D0
+! ! ! !    incx = 1
+! ! ! !    call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
+! ! ! !    do i = 1, ndim
+! ! ! !         res2(i) = res2(i) * energ(i)
+! ! ! !    enddo
+! ! ! !    call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
+! ! ! ! !   write(*, *) vec
+! ! ! !    res2 = res-vec
+! ! ! ! !    write (*,*) res2
+! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+do i = 1,80
+   M1 = 1.D0
+   call fe%matmult(M1)
+enddo
+! ! ! !   write(*,*) DBLE(M1)
+! ! !    M2 = 1.D0
+! ! !    call ZGEMM('C', 'N', ndim, ndim, ndim, alpha, U, ndim, M2, ndim, beta, M3, ndim)
+! ! !       do i = 1, ndim
+! ! !         M3(i,:) = M3(i,:) * energ(i)
+! ! !    enddo
+! ! !    call ZGEMM('N', 'N', ndim, ndim, ndim, alpha, U, ndim, M3, ndim, beta, M2, ndim)
+! ! !    
+! ! ! !   write (*,*) DBLE(M2)
+! ! !    M3 = M2-M1
+! ! !    write (*, *) "Difference in 1-Norm:", zlange('1', ndim, ndim, M3, ndim, lwork)
 end program mscbdecomp

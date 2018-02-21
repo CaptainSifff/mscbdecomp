@@ -3,7 +3,7 @@ module vertex_mod
 
         type :: simplenode
         integer :: x,y
-        complex (kind=kind(0.d0)) :: axy
+        complex (kind=kind(0.d0)) :: s,c
     end type simplenode
 
     type :: node
@@ -17,7 +17,8 @@ module vertex_mod
     contains
         procedure :: init => SingleColExp_init
         procedure :: dealloc => SingleColExp_dealloc
-        procedure :: mult => SingleColExp_mult
+        procedure :: vecmult => SingleColExp_vecmult
+        procedure :: matmult => SingleColExp_matmult
     end type
 
     type :: FullExp
@@ -26,7 +27,8 @@ module vertex_mod
     contains
         procedure :: init => FullExp_init
         procedure :: dealloc => FullExp_dealloc
-        procedure :: mult => FullExp_mult
+        procedure :: vecmult => FullExp_vecmult
+        procedure :: matmult => FullExp_matmult
     end type FullExp
     
     type :: Vertex
@@ -41,7 +43,7 @@ module vertex_mod
     end type Vertex
 contains
 
-subroutine SingleColExp_mult(this, vec)
+subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i, j
@@ -49,10 +51,32 @@ subroutine SingleColExp_mult(this, vec)
     do i = 1, this%nrofentries! for every matrix
         t1 = vec(this%nodes(i)%x)
         t2 = vec(this%nodes(i)%y)
-        vec(this%nodes(i)%x) = cosh(this%nodes(i)%axy) * t1 + sinh(this%nodes(i)%axy)* t2
-        vec(this%nodes(i)%y) = cosh(this%nodes(i)%axy) * t2 + sinh(this%nodes(i)%axy)* t1
+        vec(this%nodes(i)%x) = this%nodes(i)%c * t1 + this%nodes(i)%s* t2
+        vec(this%nodes(i)%y) = this%nodes(i)%c * t2 + this%nodes(i)%s* t1
     enddo
-end subroutine SingleColExp_mult
+end subroutine SingleColExp_vecmult
+
+subroutine SingleColExp_matmult(this, mat)
+    class(SingleColExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i, j, k, ndim
+    integer, parameter :: step = 2
+    complex(kind=kind(0.D0)) :: t1(step), t2(step)
+    
+    ndim = size(mat,1)
+    do j = 1, ndim, step
+        do i = 1, this%nrofentries! for every matrix
+            do k = 1,step
+                t1(k) = mat(this%nodes(i)%x, j+k)
+                t2(k) = mat(this%nodes(i)%y, j+k)
+            enddo
+            do k = 1, step
+                mat(this%nodes(i)%x, j+k) = this%nodes(i)%c * t1(k) + this%nodes(i)%s* t2(k)
+                mat(this%nodes(i)%y, j+k) = this%nodes(i)%c * t2(k) + this%nodes(i)%s* t1(k)
+            enddo
+        enddo
+    enddo
+end subroutine SingleColExp_matmult
 
 subroutine SingleColExp_init(this, nodes, nredges)
     class(SingleColExp) :: this
@@ -65,7 +89,8 @@ subroutine SingleColExp_init(this, nodes, nredges)
     do i = 1, nredges
         this%nodes(i)%x = nodes(i)%x
         this%nodes(i)%y = nodes(i)%y
-        this%nodes(i)%axy = nodes(i)%axy
+        this%nodes(i)%c = cosh(nodes(i)%axy)
+        this%nodes(i)%s = sinh(nodes(i)%axy)
     enddo
 ! All nodes that we have been passed are now from a single color.
 ! They constitute now a strictly sparse matrix.
@@ -82,14 +107,23 @@ subroutine FullExp_dealloc(this)
     deallocate(this%singleexps)
 end subroutine FullExp_dealloc
 
-subroutine FullExp_mult(this, vec)
+subroutine FullExp_vecmult(this, vec)
     class(FullExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
     do i = 1, this%nrofcols
-        call this%singleexps(i)%mult(vec)
+        call this%singleexps(i)%vecmult(vec)
     enddo
-end subroutine FullExp_mult
+end subroutine FullExp_vecmult
+
+subroutine FullExp_matmult(this, mat)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%matmult(mat)
+    enddo
+end subroutine FullExp_matmult
 
 subroutine FullExp_init(this, nodes, usedcolors)
     class(FullExp) :: this
