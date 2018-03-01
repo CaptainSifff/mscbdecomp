@@ -1,7 +1,7 @@
 module vertex_mod
     implicit none
 
-        type :: simplenode
+    type :: simplenode
         integer :: x,y
         complex (kind=kind(0.d0)) :: s,c
     end type simplenode
@@ -40,8 +40,28 @@ module vertex_mod
         procedure :: destruct => vertex_destruct
         procedure :: any_color_available => vertex_any_color_available
         procedure :: set_edge_color => vertex_set_edge_color
+        procedure :: find_maximal_fan => vertex_find_maximal_fan
     end type Vertex
 contains
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function constructs a Vizing Fan.
+!
+!> @param[in] this The vertex that we consider
+!> @param[in] v0 The incident vertex that still is uncolored.
+!--------------------------------------------------------------------
+subroutine vertex_find_maximal_fan(this, v0)
+    class(Vertex) :: this, v0
+    integer, dimension(:), allocatable :: f
+    integer :: fsize
+    fsize=1
+    allocate(f(this%degree)) ! This is the maximum size the fan can have
+    
+end subroutine vertex_find_maximal_fan
 
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
@@ -56,6 +76,16 @@ subroutine SingleColExp_vecmult(this, vec)
     enddo
 end subroutine SingleColExp_vecmult
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> Perform the multiplication of this exponential with a matrix.
+!
+!> @param[in] this The vertex that we consider
+!> @param[inout] mat the matrix that we modify.
+!--------------------------------------------------------------------
 subroutine SingleColExp_matmult(this, mat)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
@@ -107,6 +137,16 @@ subroutine FullExp_dealloc(this)
     deallocate(this%singleexps)
 end subroutine FullExp_dealloc
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function multiplies this full exponential with a vector
+!
+!> @param[in] this The exponential opbject
+!> @param[in] vec The vector that we multiply
+!--------------------------------------------------------------------
 subroutine FullExp_vecmult(this, vec)
     class(FullExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
@@ -166,6 +206,17 @@ subroutine vertex_init(this, deg)
     this%cols = 0
 end subroutine vertex_init
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> Set the color of an incident edge.
+!
+!> @param[in] this The vertex that we consider
+!> @param[in] vert the index of the neighbour
+!> @param[in] col the value of the color
+!--------------------------------------------------------------------
 subroutine vertex_set_edge_color(this, vert, col)
     class(vertex) :: this
     integer, intent(in) :: vert, col
@@ -176,6 +227,15 @@ subroutine vertex_set_edge_color(this, vert, col)
     enddo
 end subroutine vertex_set_edge_color
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> Tidy up allocated space
+!
+!> @param[in] this The vertex that we consider
+!--------------------------------------------------------------------
 subroutine vertex_destruct(this)
     class(vertex) :: this
     deallocate(this%nbrs, this%cols)
@@ -235,7 +295,6 @@ function find_common_free_color(v, w, maxcols) result(col)
     do i = maxcols, 1, -1
         if (usedcols(i) .eqv. .false.) col = i
     enddo
-    if (col == 0) write(*,*) "this should not happen!"
     deallocate(usedcols)
 end function find_common_free_color
 
