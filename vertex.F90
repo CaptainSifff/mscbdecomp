@@ -41,8 +41,26 @@ module vertex_mod
         procedure :: any_color_available => vertex_any_color_available
         procedure :: set_edge_color => vertex_set_edge_color
         procedure :: find_maximal_fan => vertex_find_maximal_fan
+        procedure :: findfreecolor => vertex_findfreecolor
     end type Vertex
 contains
+
+function vertex_findfreecolor(this, maxcols) result(col)
+    class(Vertex) :: this
+    integer :: maxcols
+    integer :: col
+    integer :: i
+    logical :: usedcols(maxcols)
+
+    usedcols = .false.
+    do i = 1, maxcols
+        if(this%cols(i) /= 0) usedcols(this%cols(i)) = .true.
+    enddo
+    col = 0
+    do i = maxcols, 1, -1
+        if(usedcols(i) .eqv. .false.) col = i
+    enddo
+end function vertex_findfreecolor
 
 !--------------------------------------------------------------------
 !> @author
@@ -52,15 +70,42 @@ contains
 !> This function constructs a Vizing Fan.
 !
 !> @param[in] this The vertex that we consider
+!> @param[in] verts the total array of all vertices
 !> @param[in] v0 The incident vertex that still is uncolored.
 !--------------------------------------------------------------------
-subroutine vertex_find_maximal_fan(this, v0)
-    class(Vertex) :: this, v0
+subroutine vertex_find_maximal_fan(this, verts, v0, maxcols, fantail, fanlen)
+    class(Vertex) :: this
+    class(Vertex), dimension(:) :: verts
+    integer, intent(out) :: fantail, fanlen
+    integer :: v0, maxcols
     integer, dimension(:), allocatable :: f
-    integer :: fsize
-    fsize=1
+    integer :: col, i, col2, col3
+    fanlen = 1
     allocate(f(this%degree)) ! This is the maximum size the fan can have
-    
+    f = 0
+    f(1) = v0
+    ! determine free color at f(1)
+    col = verts(f(1))%findfreecolor(maxcols)
+    ! col is now a small color that is free at f(1)
+    ! determine incident edge that has exactly this color
+    i = 1
+    do while ((f(2) == 0) .and. (i <= this%degree))
+        if (this%cols(i) == col) f(2) = this%nbrs(i)
+        i = i+1
+    end do
+    fanlen = fanlen + 1
+    ! determine wether we hit the case that we have to stop early
+    ! This corresponds to step V5 in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf , page 16
+    ! determine a free color at f(2)
+    if(verts(f(2))%findfreecolor(maxcols) == this%findfreecolor(maxcols)) then
+    write (*,*) "free colors match, early return from fan construction"
+    fantail = f(2)
+    else 
+        write (*,*) "early check not sufficient!"
+        STOP
+    ! No early return -> We need to construct a full fan
+    endif
+    deallocate(f)
 end subroutine vertex_find_maximal_fan
 
 subroutine SingleColExp_vecmult(this, vec)
