@@ -24,7 +24,7 @@ program mscbdecomp
     use vertex_mod
     implicit none
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
-    integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol
+    integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol, nbr1, nbr2
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
@@ -154,8 +154,45 @@ endif
                     call verts(fan(fanlen))%set_edge_color(i, oldcol)
                 else
                     ! We would need to inverse a path
-                    write (*,*) "inversion of paths not implemented!"
-                    STOP
+                    write (*,*) "construct path of colors", verts(i)%findfreecolor(maxcolors), &
+                    & verts(fan(fanlen))%findfreecolor(maxcolors), "at", i, fan(fanlen)
+                    ! let's try to construct a small two piece path....
+                    ! find edge with the color that is free at the fan end
+                    tmpcol = verts(fan(fanlen))%findfreecolor(maxcolors)
+                    oldcol = verts(i)%findfreecolor(maxcolors)
+                    do k = 1, verts(i)%degree
+                        if (verts(i)%cols(k) == tmpcol) nbr1 = verts(i)%nbrs(k)
+                    enddo
+                    !find the second
+                    do k = 1, verts(nbr1)%degree
+                        if (verts(nbr1)%cols(k) == oldcol) nbr2 = verts(i)%nbrs(k)
+                    enddo
+                    ! check wether this is sufficient
+                    do k = 1, verts(nbr2)%degree
+                        if (verts(nbr2)%cols(k) == tmpcol) then
+                                            write (*,*) "inversion of paths longer than two not implemented!"
+                        STOP
+                        endif
+                    enddo
+                    
+                    !switch the path
+                    call verts(i)%set_edge_color(nbr1, oldcol);
+                    call verts(nbr1)%set_edge_color(i, oldcol);
+                
+                    call verts(nbr1)%set_edge_color(nbr2, tmpcol);
+                    call verts(nbr2)%set_edge_color(nbr1, tmpcol);
+                    ! try again to obtain a color
+                    availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
+                    if (availablecolor == 0) then
+                        ! if still no color cry BUG
+                        write (*,*) "BUG!"
+                        STOP
+                    else
+                        write(*,*) availablecolor
+                        ! set that color
+                        call verts(i)%set_edge_color(j, availablecolor);
+                        call verts(j)%set_edge_color(i, availablecolor);
+                    endif
                 endif
                 deallocate(fan)
             else
