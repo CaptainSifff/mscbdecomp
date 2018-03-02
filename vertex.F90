@@ -40,6 +40,7 @@ module vertex_mod
         procedure :: destruct => vertex_destruct
         procedure :: any_color_available => vertex_any_color_available
         procedure :: set_edge_color => vertex_set_edge_color
+        procedure :: get_edge_color => vertex_get_edge_color
         procedure :: find_maximal_fan => vertex_find_maximal_fan
         procedure :: findfreecolor => vertex_findfreecolor
     end type Vertex
@@ -53,7 +54,7 @@ function vertex_findfreecolor(this, maxcols) result(col)
     logical :: usedcols(maxcols)
 
     usedcols = .false.
-    do i = 1, maxcols
+    do i = 1, this%degree
         if(this%cols(i) /= 0) usedcols(this%cols(i)) = .true.
     enddo
     col = 0
@@ -73,40 +74,50 @@ end function vertex_findfreecolor
 !> @param[in] verts the total array of all vertices
 !> @param[in] v0 The incident vertex that still is uncolored.
 !--------------------------------------------------------------------
-subroutine vertex_find_maximal_fan(this, verts, v0, maxcols, fantail, fanlen)
+function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(rescol)
     class(Vertex) :: this
     class(Vertex), dimension(:) :: verts
-    integer, intent(out) :: fantail, fanlen
+    integer, intent(out) :: fanlen
+    integer :: rescol
+    integer, dimension(:), intent(out) :: f
     integer :: v0, maxcols
-    integer, dimension(:), allocatable :: f
-    integer :: col, i, col2, col3
+    integer :: col, i, j, col2, col3, ctr
+    logical :: usedcols(maxcols) !< in usedcols we track the colors we have chosen during construction of the fan.
+    logical :: isused
     fanlen = 1
-    allocate(f(this%degree)) ! This is the maximum size the fan can have
     f = 0
     f(1) = v0
-    ! determine free color at f(1)
-    col = verts(f(1))%findfreecolor(maxcols)
-    ! col is now a small color that is free at f(1)
-    ! determine incident edge that has exactly this color
-    i = 1
-    do while ((f(2) == 0) .and. (i <= this%degree))
-        if (this%cols(i) == col) f(2) = this%nbrs(i)
-        i = i+1
-    end do
-    fanlen = fanlen + 1
-    ! determine wether we hit the case that we have to stop early
-    ! This corresponds to step V5 in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf , page 16
-    ! determine a free color at f(2)
-    if(verts(f(2))%findfreecolor(maxcols) == this%findfreecolor(maxcols)) then
-    write (*,*) "free colors match, early return from fan construction"
-    fantail = f(2)
-    else 
-        write (*,*) "early check not sufficient!"
-        STOP
-    ! No early return -> We need to construct a full fan
-    endif
-    deallocate(f)
-end subroutine vertex_find_maximal_fan
+    ctr = 1
+    rescol = 0
+    usedcols = .false.
+    do while ((ctr < this%degree) .and. (rescol == 0))
+        ! determine free color at end of fan
+        col = 0
+        i = 1
+        do while ((i <= maxcols) .and. (col == 0))
+            if (usedcols(i) .neqv. .true.) then
+                isused = .false.
+                do j = 1, verts(f(fanlen))%degree
+                    if (verts(f(fanlen))%cols(j) == i) isused = .true.
+                enddo
+                if (isused .eqv. .false.) col = i
+            endif
+            i = i + 1
+        enddo
+        ! col is now a small color that is free at f(1)
+        ! determine incident edge that has exactly this color
+        i = 1
+        do while ((f(fanlen + 1) == 0) .and. (i <= this%degree))
+            if (this%cols(i) == col) f(fanlen + 1) = this%nbrs(i)
+            i = i+1
+        end do
+        fanlen = fanlen + 1
+        usedcols(col) = .true.
+        ! let's see wether we can stop the fan construction since we find matching colors
+        rescol = find_common_free_color(this, verts(f(fanlen)), maxcols)
+        ctr = ctr + 1
+    enddo
+end function vertex_find_maximal_fan
 
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
@@ -250,6 +261,28 @@ subroutine vertex_init(this, deg)
     allocate(this%nbrs(deg), this%cols(deg))
     this%cols = 0
 end subroutine vertex_init
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> get the color of an incident edge.
+!
+!> @param[in] this The vertex that we consider
+!> @param[in] vert the index of the neighbour
+!> @param[in] col the value of the color
+!--------------------------------------------------------------------
+function vertex_get_edge_color(this, vert) result(col)
+    class(vertex) :: this
+    integer, intent(in) :: vert
+    integer :: col
+    integer :: i
+    
+    do i = 1, this%degree
+        if(this%nbrs(i) == vert) col = this%cols(i)
+    enddo
+end function vertex_get_edge_color
 
 !--------------------------------------------------------------------
 !> @author

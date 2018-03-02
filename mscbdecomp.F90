@@ -24,7 +24,7 @@ program mscbdecomp
     use vertex_mod
     implicit none
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
-    integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol
+    integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
@@ -32,10 +32,12 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
     type(Vertex), allocatable, dimension(:) :: verts
+    integer, allocatable, dimension(:) :: fan
     logical :: check
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
+    integer :: seed
     complex(kind=kind(0.D0)) :: alpha, beta
     ! initialize A with some data
     hop = 0.1
@@ -60,25 +62,23 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 5
+ndim = 6
 allocate(A(ndim, ndim))
-! This graph succeeds in triggering the case where we have to reallocate colors
+! do seed = 1, 100000
+! write (*,*) "seed", seed
+seed = 2158
+call srand(seed)
 A=0
-A(1,2) = hop
-A(2,1) = hop
-A(2,3) = hop
-A(3,2) = hop
-A(3,4) = hop
-A(4,3) = hop
-A(4,1) = hop
-A(1,4) = hop
-A(1,5) = hop
-A(5,1) = hop
-A(2,5) = hop
-A(5,2) = hop
-A(3,5) = hop
-A(5,3) = hop
-
+do i = 1, ndim-1
+do j = i+1, ndim
+if (rand() > 0.5) then
+write (*,*) i,j
+A(i,j) = hop
+A(j,i) = hop
+endif
+enddo
+enddo
+nredges = 0
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
 ! check input
     ! first check diagonal
@@ -89,14 +89,14 @@ A(5,3) = hop
         endif
     enddo
     ! check symmetry
-    do i = 1, ndim
-        do j = 1, ndim
-            if(A(i,j) /= conjg(A(j,i))) then
-                write (*, *) "Non-hermitian matrix encountered!"
-                stop
-            endif
-        enddo
-    enddo
+!     do i = 1, ndim
+!         do j = 1, ndim
+!             if(A(i,j) /= conjg(A(j,i))) then
+!                 write (*, *) "Non-hermitian matrix encountered!"
+!                 stop
+!             endif
+!         enddo
+!     enddo
     allocate(verts(ndim))
 ! calculate Vertex degree
     deltag = 0;
@@ -139,30 +139,25 @@ endif
             if(availablecolor == 0) then
                 ! Our starting vertex is verts(i), our target vertex is verts(j)
                 ! Now we need to construct a Vizing fan around verts(i)
-                write (*,*) "out of colors"
-                call verts(i)%find_maximal_fan(verts, j, maxcolors, fantail, fanlen)
-                if ((fanlen == 2)) then! We assume(at least it is not clear to me) that this can only happen in the early return case 
-                    oldcol = find_common_free_color(verts(i), verts(fantail), maxcolors)
-                    ! the currently blank edge gets the color of (verts(i), verts(fantail))
-                    availablecolor = 0
-                    k = 1
-                    do while ((availablecolor == 0) .and. (k <= verts(i)%degree))
-                        if(verts(i)%nbrs(k) == fantail) then
-                            availablecolor = verts(i)%cols(k)
-                        endif
-                        k = k+1
+                write (*,*) "out of colors. Trying to downshift Vizing fan"
+                allocate(fan(verts(i)%degree))
+                oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
+                write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
+                if (oldcol .ne. 0) then
+                    ! the end of the fan has a free color -> down-shifting sufficient
+                    do k = 1, fanlen-1
+                        tmpcol = verts(i)%get_edge_color(fan(k+1))
+                        call verts(i)%set_edge_color(fan(k), tmpcol)
+                        call verts(fan(k))%set_edge_color(i, tmpcol)
                     enddo
-                call verts(i)%set_edge_color(j, availablecolor);
-                call verts(j)%set_edge_color(i, availablecolor);
-                ! recolor the edge (verts(i), verts(fantail))
-                call verts(i)%set_edge_color(fantail, oldcol);
-                call verts(fantail)%set_edge_color(i, oldcol);
+                    call verts(i)%set_edge_color(fan(fanlen), oldcol)
+                    call verts(fan(fanlen))%set_edge_color(i, oldcol)
                 else
-                    ! Here we need to construct the cd path and invert it.
-                    write (*,*) "case of larger fans not handled yet!"
+                    ! We would need to inverse a path
+                    write (*,*) "inversion of paths not implemented!"
                     STOP
                 endif
-                write (*,*) fantail, fanlen
+                deallocate(fan)
             else
                 write(*,*) availablecolor
                 ! set that color
@@ -179,6 +174,7 @@ endif
             if (verts(i)%cols(j) == deltag + 1) usedcolors = deltag + 1
         enddo
     enddo
+    write (*,*) "Nr edges: ", nredges
     if (usedcolors == deltag) then
         write(*,*) "Maximum Degree", deltag, ". Found", usedcolors," Families -> optimal decomposition"
     else
@@ -201,7 +197,7 @@ allocate( nodes(nredges))
         enddo
     enddo
     call fe%init(nodes, usedcolors)
-
+    deallocate(nodes)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
 ! ! ! !     do i = 1, ndim
@@ -234,10 +230,16 @@ vec = 1.D0
    res2 = res-vec
 !    write (*,*) res2
    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
-do i = 1,80
-   M1 = 1.D0
-   call fe%matmult(M1)
-enddo
+   do i = 1, size(verts)
+    call verts(i)%destruct()
+   enddo
+   call fe%dealloc()
+   deallocate(U, vec, energ, M1, M2, M3, verts, res2)
+!enddo
+! do i = 1,80
+!    M1 = 1.D0
+!    call fe%matmult(M1)
+! enddo
 ! ! ! !   write(*,*) DBLE(M1)
 ! ! !    M2 = 1.D0
 ! ! !    call ZGEMM('C', 'N', ndim, ndim, ndim, alpha, U, ndim, M2, ndim, beta, M3, ndim)
