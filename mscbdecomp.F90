@@ -24,7 +24,7 @@ program mscbdecomp
     use vertex_mod
     implicit none
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
-    integer :: availablecolor, nredges, dn, IERR, incx
+    integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
@@ -38,18 +38,48 @@ program mscbdecomp
     real(kind=kind(0.D0)) :: dznrm2, zlange
     complex(kind=kind(0.D0)) :: alpha, beta
     ! initialize A with some data
-    ndim = 1024
     hop = 0.1
     nredges = 0
-    allocate(A(ndim, ndim), U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
-    do i = 1, ndim-1
-        A(i,i+1) = hop
-        A(i+1,i) = hop
-    enddo
-    do i = 1, ndim-2
-        A(i,i+2) = hop
-        A(i+2,i) = hop
-    enddo
+! coresponds to chain with next-nearest neighbour hopping and OBC
+! ndim = 10
+! allocate(A(ndim, ndim))
+! do I = 1, ndim-1
+! A(I,I+1) = hop
+! A(i+1, i) = hop
+! enddo
+! A(1,10) = hop
+! A(10,1) = hop
+! A(3,8) = hop
+! A(8, 3) = hop
+! A(9,2) = hop
+! A(2, 9) = hop
+! A(7,4) = hop
+! A(4, 7) = hop
+! A(1,5) = hop
+! A(5,1) = hop
+! A(10,6) = hop
+! A(6,10) = hop
+
+ndim = 5
+allocate(A(ndim, ndim))
+! This graph succeeds in triggering the case where we have to reallocate colors
+A=0
+A(1,2) = hop
+A(2,1) = hop
+A(2,3) = hop
+A(3,2) = hop
+A(3,4) = hop
+A(4,3) = hop
+A(4,1) = hop
+A(1,4) = hop
+A(1,5) = hop
+A(5,1) = hop
+A(2,5) = hop
+A(5,2) = hop
+A(3,5) = hop
+A(5,3) = hop
+
+    allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
 ! check input
     ! first check diagonal
     do i = 1, ndim
@@ -107,12 +137,38 @@ STOP
 endif
             availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
             if(availablecolor == 0) then
-            ! One of the vertices has no free color -> we don't know what to do yet.
+                ! Our starting vertex is verts(i), our target vertex is verts(j)
+                ! Now we need to construct a Vizing fan around verts(i)
+                write (*,*) "out of colors"
+                call verts(i)%find_maximal_fan(verts, j, maxcolors, fantail, fanlen)
+                if ((fanlen == 2)) then! We assume(at least it is not clear to me) that this can only happen in the early return case 
+                    oldcol = find_common_free_color(verts(i), verts(fantail), maxcolors)
+                    ! the currently blank edge gets the color of (verts(i), verts(fantail))
+                    availablecolor = 0
+                    k = 1
+                    do while ((availablecolor == 0) .and. (k <= verts(i)%degree))
+                        if(verts(i)%nbrs(k) == fantail) then
+                            availablecolor = verts(i)%cols(k)
+                        endif
+                        k = k+1
+                    enddo
+                call verts(i)%set_edge_color(j, availablecolor);
+                call verts(j)%set_edge_color(i, availablecolor);
+                ! recolor the edge (verts(i), verts(fantail))
+                call verts(i)%set_edge_color(fantail, oldcol);
+                call verts(fantail)%set_edge_color(i, oldcol);
+                else
+                    ! Here we need to construct the cd path and invert it.
+                    write (*,*) "case of larger fans not handled yet!"
+                    STOP
+                endif
+                write (*,*) fantail, fanlen
+            else
+                write(*,*) availablecolor
+                ! set that color
+                call verts(i)%set_edge_color(j, availablecolor);
+                call verts(j)%set_edge_color(i, availablecolor);
             endif
-            write(*,*) availablecolor
-            ! set that color
-            call verts(i)%set_edge_color(j, availablecolor);
-            call verts(j)%set_edge_color(i, availablecolor);
         endif
         enddo
     enddo
@@ -153,31 +209,31 @@ allocate( nodes(nredges))
 ! ! ! !         write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
 ! ! ! !         enddo
 ! ! ! !     enddo
-! ! ! ! vec = 1.D0
-! ! ! !   call fe%vecmult(vec)
-! ! ! ! !  write (*,*) vec
-! ! ! ! !  write(*,*) "generating comparison data"
-! ! ! !   res = vec
-! ! ! !   vec = 1
-! ! ! !   dn = 3*ndim
-! ! ! !  allocate(lwork(dn), rwork(dn), res2(ndim))
-! ! ! !    U = A
-! ! ! !    call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
-! ! ! !    deallocate(lwork, rwork)
-! ! ! !    energ = exp(energ)
-! ! ! !    ! apply to vec
-! ! ! !    alpha = 1.D0
-! ! ! !    beta = 0.D0
-! ! ! !    incx = 1
-! ! ! !    call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
-! ! ! !    do i = 1, ndim
-! ! ! !         res2(i) = res2(i) * energ(i)
-! ! ! !    enddo
-! ! ! !    call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
-! ! ! ! !   write(*, *) vec
-! ! ! !    res2 = res-vec
-! ! ! ! !    write (*,*) res2
-! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+vec = 1.D0
+  call fe%vecmult(vec)
+!  write (*,*) vec
+!  write(*,*) "generating comparison data"
+  res = vec
+  vec = 1
+  dn = 3*ndim
+ allocate(lwork(dn), rwork(dn), res2(ndim))
+   U = A
+   call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
+   deallocate(lwork, rwork)
+   energ = exp(energ)
+   ! apply to vec
+   alpha = 1.D0
+   beta = 0.D0
+   incx = 1
+   call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
+   do i = 1, ndim
+        res2(i) = res2(i) * energ(i)
+   enddo
+   call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
+!   write(*, *) vec
+   res2 = res-vec
+!    write (*,*) res2
+   write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
 do i = 1,80
    M1 = 1.D0
    call fe%matmult(M1)
