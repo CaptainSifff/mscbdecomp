@@ -23,10 +23,10 @@
 module vertex_mod
     implicit none
 
-    type :: simplenode
+    type :: Simplenode
         integer :: x,y
         complex (kind=kind(0.d0)) :: s,c
-    end type simplenode
+    end type Simplenode
 
     type :: node
         integer :: x,y, col
@@ -35,7 +35,7 @@ module vertex_mod
 
     type :: SingleColExp
         integer :: nrofentries
-        type(simplenode), dimension(:), allocatable :: nodes
+        type(Simplenode), dimension(:), allocatable :: nodes
     contains
         procedure :: init => SingleColExp_init
         procedure :: dealloc => SingleColExp_dealloc
@@ -98,14 +98,15 @@ end function vertex_findfreecolor
 !--------------------------------------------------------------------
 function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(rescol)
     class(Vertex) :: this
-    class(Vertex), dimension(:) :: verts
+    class(Vertex), dimension(:), intent(in) :: verts
     integer, intent(out) :: fanlen
     integer :: rescol
     integer, dimension(:), intent(out) :: f
     integer :: v0, maxcols
-    integer :: col, i, j, col2, col3, ctr
-    logical :: usedcols(maxcols) !< in usedcols we track the colors we have chosen during construction of the fan.
-    logical :: isused
+    integer :: col, i, j, ctr
+    logical, allocatable, dimension(:) :: usedcols !< in usedcols we track the colors we have chosen during construction of the fan.
+    
+    allocate (usedcols(maxcols))
     fanlen = 1
     f = 0
     f(1) = v0
@@ -113,16 +114,16 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
     rescol = 0
     usedcols = .false.
     do while ((ctr < this%degree) .and. (rescol == 0))
-        ! determine free color at end of fan
+        ! determine free color at end of fan that has not already been used in the construction of the fan.
         col = 0
         i = 1
         do while ((i <= maxcols) .and. (col == 0))
             if (usedcols(i) .neqv. .true.) then
-                isused = .false.
-                do j = 1, verts(f(fanlen))%degree
-                    if (verts(f(fanlen))%cols(j) == i) isused = .true.
+                j = 1
+                do while ((j <= verts(f(fanlen))%degree) .and. (verts(f(fanlen))%cols(j) /= i))
+                    j = j + 1
                 enddo
-                if (isused .eqv. .false.) col = i
+                if (j > verts(f(fanlen))%degree) col = i
             endif
             i = i + 1
         enddo
@@ -131,7 +132,7 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
         i = 1
         do while ((f(fanlen + 1) == 0) .and. (i <= this%degree))
             if (this%cols(i) == col) f(fanlen + 1) = this%nbrs(i)
-            i = i+1
+            i = i + 1
         end do
         fanlen = fanlen + 1
         usedcols(col) = .true.
@@ -139,6 +140,7 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
         rescol = find_common_free_color(this, verts(f(fanlen)), maxcols)
         ctr = ctr + 1
     enddo
+    deallocate(usedcols)
 end function vertex_find_maximal_fan
 
 subroutine SingleColExp_vecmult(this, vec)
@@ -265,9 +267,9 @@ subroutine FullExp_init(this, nodes, usedcolors)
         simplenodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
         edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
     enddo
-    do i = 1, usedcolors
-    write (*,*) edgectr(i), nredges(i)
-    enddo
+!     do i = 1, usedcolors
+!     write (*,*) edgectr(i), nredges(i)
+!     enddo
     allocate(this%singleexps(usedcolors))
     do i = 1, usedcolors
         call this%singleexps(i)%init(simplenodes(i, :), nredges(i))
