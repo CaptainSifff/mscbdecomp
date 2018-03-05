@@ -25,6 +25,8 @@ program mscbdecomp
     implicit none
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
     integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol, nbr1, nbr2
+    integer ::  curcol, col(2), colctr
+    integer :: ver, nbr, curver
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
@@ -33,14 +35,16 @@ program mscbdecomp
     
     type(Vertex), allocatable, dimension(:) :: verts
     integer, allocatable, dimension(:) :: fan
-    logical :: check
+    logical, allocatable, dimension(:) :: usedcols
+    logical :: check, stoppath
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
     integer :: seed
     complex(kind=kind(0.D0)) :: alpha, beta
+    Type(Path) :: p
     ! initialize A with some data
-    hop = 0.1
+    hop = 0.01
     nredges = 0
 ! coresponds to chain with next-nearest neighbour hopping and OBC
 ! ndim = 10
@@ -62,17 +66,17 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 6
+ndim = 400
 allocate(A(ndim, ndim))
-! do seed = 1, 100000
-! write (*,*) "seed", seed
-seed = 2158
+!do seed = 1, 1000
+seed = 1234
+write (*,*) "seed", seed
 call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.5) then
-write (*,*) i,j
+if (rand() > 0.2) then
+!write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
 endif
@@ -142,7 +146,9 @@ endif
                 write (*,*) "out of colors. Trying to downshift Vizing fan"
                 allocate(fan(verts(i)%degree))
                 oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
+#ifdef DEBUG
                 write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
+#endif
                 if (oldcol .ne. 0) then
                     ! the end of the fan has a free color -> down-shifting sufficient
                     do k = 1, fanlen-1
@@ -153,9 +159,49 @@ endif
                     call verts(i)%set_edge_color(fan(fanlen), oldcol)
                     call verts(fan(fanlen))%set_edge_color(i, oldcol)
                 else
+                ! FIXME: this part needs improvement so that longer paths can be inverted
                     ! We would need to inverse a path
+!#ifdef DEBUG
                     write (*,*) "construct path of colors", verts(i)%findfreecolor(maxcolors), &
                     & verts(fan(fanlen))%findfreecolor(maxcolors), "at", i, fan(fanlen)
+!#endif
+
+! set up the start of the path at the fan
+!determine the two colors for the c-d path
+                    col(1) = verts(fan(fanlen))%findfreecolor(maxcolors)
+                    col(2) = verts(i)%findfreecolor(maxcolors)
+                    call p%init()
+                    do k = 1, verts(i)%degree
+                        if (verts(i)%cols(k) == col(1)) nbr1 = k
+                    enddo
+                    ! (i, nbr1) is the first piece of the path. nbr1 is the position within the arrays of verts(i)
+                    call p%pushback(i, nbr1)
+                    stoppath = .false.
+                    colctr = 2
+                    do while(stoppath .eqv. .false.)
+                        ! current vertex
+!                        int ver, nbr
+                        call p%back(ver, nbr)
+                        curver = verts(ver)%nbrs(nbr)
+                        ! find nbr of current color
+                        nbr1 = 0
+                        do k = 1, verts(curver)%degree
+                            if (verts(curver)%cols(k) == col(colctr)) nbr1 = k
+                        enddo
+                        if (nbr1 == 0) then
+                            ! presumably we have reached the end of the path
+                            stoppath = .true.
+                        else
+                            call p%pushback(curver, nbr1)
+                            colctr = colctr + 1
+                            if (colctr > 2) colctr = 1
+                        endif
+                    enddo
+                    write (*, *) "Length of path", p%length()
+!                    write (*, *) p%vertices
+                    call p%back(ver, nbr) 
+!                    write (*, *) verts(ver)%nbrs(nbr)
+!                    STOP 
                     ! let's try to construct a small two piece path....
                     ! find edge with the color that is free at the fan end
                     tmpcol = verts(fan(fanlen))%findfreecolor(maxcolors)
@@ -168,19 +214,31 @@ endif
                         if (verts(nbr1)%cols(k) == oldcol) nbr2 = verts(i)%nbrs(k)
                     enddo
                     ! check wether this is sufficient
-                    do k = 1, verts(nbr2)%degree
-                        if (verts(nbr2)%cols(k) == tmpcol) then
-                                            write (*,*) "inversion of paths longer than two not implemented!"
-                        STOP
-                        endif
-                    enddo
-                    
+!                     do k = 1, verts(nbr2)%degree
+!                         if (verts(nbr2)%cols(k) == tmpcol) then
+!                             write (*,*) "inversion of paths longer than two not implemented!"
+!                         STOP
+!                         endif
+!                     enddo
+!                    write (*,*) i, nbr1, nbr2
                     !switch the path
-                    call verts(i)%set_edge_color(nbr1, oldcol);
-                    call verts(nbr1)%set_edge_color(i, oldcol);
-                
-                    call verts(nbr1)%set_edge_color(nbr2, tmpcol);
-                    call verts(nbr2)%set_edge_color(nbr1, tmpcol);
+! ! ! ! !                     call verts(i)%set_edge_color(nbr1, oldcol);
+! ! ! ! !                     call verts(nbr1)%set_edge_color(i, oldcol);
+! ! ! ! !                 
+! ! ! ! !                     call verts(nbr1)%set_edge_color(nbr2, tmpcol);
+! ! ! ! !                     call verts(nbr2)%set_edge_color(nbr1, tmpcol);
+k = 1
+ colctr = 2
+do while(k<=p%length())
+!write (*,*) " k =", k, "", p%vertices
+call p%at(k, ver, nbr)
+verts(ver)%cols(nbr) = col(colctr)
+!write (*,*) ver
+call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
+k = k + 1
+                            colctr = colctr + 1
+                            if (colctr > 2) colctr = 1
+enddo
                     ! try again to obtain a color
                     availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
                     if (availablecolor == 0) then
@@ -188,15 +246,20 @@ endif
                         write (*,*) "BUG!"
                         STOP
                     else
+!#ifdef DEBUG
                         write(*,*) availablecolor
+!#endif
                         ! set that color
                         call verts(i)%set_edge_color(j, availablecolor);
                         call verts(j)%set_edge_color(i, availablecolor);
                     endif
+                    call p%dealloc()
                 endif
                 deallocate(fan)
             else
+#ifdef DEBUG
                 write(*,*) availablecolor
+#endif
                 ! set that color
                 call verts(i)%set_edge_color(j, availablecolor);
                 call verts(j)%set_edge_color(i, availablecolor);
@@ -219,7 +282,7 @@ endif
     endif
 ! set up data in an edges based layout
 k = 0
-allocate( nodes(nredges))
+allocate( nodes(nredges), usedcols(maxcolors))
     do i = 1, ndim-1
         do j = i+1, ndim
         if (A(i, j) /= 0.D0) then
@@ -227,14 +290,25 @@ allocate( nodes(nredges))
             nodes(k)%x = i
             nodes(k)%y = j
             nodes(k)%axy = A(i,j)
+            ! check validity of the coloring locally
+            usedcols = .false.
+            do l = 1, verts(i)%degree
+                if (usedcols(verts(i)%cols(l)) .eqv. .true. ) then
+                    write (*,*) "invalid coloring!!"
+                    STOP
+                else
+                    usedcols(verts(i)%cols(l)) = .true.
+                endif
+            enddo
             do l = 1, verts(i)%degree
                 if(verts(i)%nbrs(l) == j) nodes(k)%col = verts(i)%cols(l)
             enddo
         endif
         enddo
     enddo
+!STOP
     call fe%init(nodes, usedcolors)
-    deallocate(nodes)
+    deallocate(nodes, usedcols)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
 ! ! ! !     do i = 1, ndim
