@@ -25,7 +25,7 @@ module vertex_mod
 
     !Another helper type for the cd_X path construction
     type :: Path
-        integer :: length
+        integer :: avamem
         integer :: tail
         integer, allocatable, dimension(:) :: vertices
         integer, allocatable, dimension(:) :: nbrindex
@@ -34,6 +34,8 @@ module vertex_mod
         procedure :: dealloc => Path_dealloc
         procedure :: pushback => Path_pushback
         procedure :: at => Path_at
+        procedure :: back => Path_back
+        procedure :: length => Path_length
     end type Path
     
     type :: Simplenode
@@ -84,8 +86,8 @@ contains
 subroutine Path_init(this)
     class(Path) :: this
     this%tail = 1
-    this%length = 16
-    allocate(this%vertices(this%length), this%nbrindex(this%length))
+    this%avamem = 16
+    allocate(this%vertices(this%avamem), this%nbrindex(this%avamem))
 end subroutine Path_init
 
 subroutine Path_dealloc(this)
@@ -96,13 +98,13 @@ end subroutine
 subroutine Path_pushback(this, vert, nbridx)
     class(Path) :: this
     integer, intent(in) :: vert, nbridx
-    if (this%tail == this%length) then
+    if (this%tail == this%avamem) then
         write (*,*) "not enough space!"
         STOP
     endif
     this%vertices(this%tail) = vert
     this%nbrindex(this%tail) = nbridx
-    this%tail = this%tail +1
+    this%tail = this%tail + 1
 end subroutine
 
 subroutine Path_at(this, pos, vert, nbridx)
@@ -112,8 +114,21 @@ subroutine Path_at(this, pos, vert, nbridx)
     vert = this%vertices(pos)
     nbridx = this%nbrindex(pos)
 end subroutine
-    
-function vertex_findfreecolor(this, maxcols) result(col)
+
+subroutine Path_back(this, vert, nbridx)
+    class(Path) :: this
+    integer, intent(out) :: vert, nbridx
+    vert = this%vertices(this%tail-1)
+    nbridx = this%nbrindex(this%tail-1)
+end subroutine
+
+function Path_length(this) result(l)
+    class(Path) :: this
+    integer :: l
+    l = this%tail-1
+end function 
+
+function vertex_findfreecolor(this, maxcols)  result(col)
     class(Vertex) :: this
     integer :: maxcols
     integer :: col
