@@ -23,6 +23,19 @@
 module vertex_mod
     implicit none
 
+    !Another helper type for the cd_X path construction
+    type :: Path
+        integer :: length
+        integer :: tail
+        integer, allocatable, dimension(:) :: vertices
+        integer, allocatable, dimension(:) :: nbrindex
+    contains
+        procedure :: init => Path_init
+        procedure :: dealloc => Path_dealloc
+        procedure :: pushback => Path_pushback
+        procedure :: at => Path_at
+    end type Path
+    
     type :: Simplenode
         integer :: x,y
         complex (kind=kind(0.d0)) :: s,c
@@ -68,6 +81,38 @@ module vertex_mod
     end type Vertex
 contains
 
+subroutine Path_init(this)
+    class(Path) :: this
+    this%tail = 1
+    this%length = 16
+    allocate(this%vertices(this%length), this%nbrindex(this%length))
+end subroutine Path_init
+
+subroutine Path_dealloc(this)
+    class(Path) :: this
+    deallocate(this%vertices, this%nbrindex)
+end subroutine
+
+subroutine Path_pushback(this, vert, nbridx)
+    class(Path) :: this
+    integer, intent(in) :: vert, nbridx
+    if (this%tail == this%length) then
+        write (*,*) "not enough space!"
+        STOP
+    endif
+    this%vertices(this%tail) = vert
+    this%nbrindex(this%tail) = nbridx
+    this%tail = this%tail +1
+end subroutine
+
+subroutine Path_at(this, pos, vert, nbridx)
+    class(Path) :: this
+    integer, intent(in) :: pos
+    integer, intent(out) :: vert, nbridx
+    vert = this%vertices(pos)
+    nbridx = this%nbrindex(pos)
+end subroutine
+    
 function vertex_findfreecolor(this, maxcols) result(col)
     class(Vertex) :: this
     integer :: maxcols
@@ -106,6 +151,8 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
     integer :: col, i, j, ctr
     logical, allocatable, dimension(:) :: usedcols !< in usedcols we track the colors we have chosen during construction of the fan.
     
+!!!!!!!    logical, allocatable, dimension(:) :: dbgcols
+    
     allocate (usedcols(maxcols))
     fanlen = 1
     f = 0
@@ -114,30 +161,66 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
     rescol = 0
     usedcols = .false.
     do while ((ctr < this%degree) .and. (rescol == 0))
+#ifdef DEBUG
+    write (*,*) "try to attach to fan"
+! ! ! ! ! ! ! check that the fantail has valid color information
+! ! ! ! ! ! ! check that no wrong color has crept in
+! ! ! ! ! ! do i = 1, verts(f(fanlen))%degree
+! ! ! ! ! ! if (verts(f(fanlen))%cols(i) > maxcols) then
+! ! ! ! ! ! write (*,*) "invalid color found!"
+! ! ! ! ! ! STOP
+! ! ! ! ! ! endif
+! ! ! ! ! ! enddo
+! ! ! ! ! ! allocate (dbgcols(maxcols))
+! ! ! ! ! ! dbgcols = .false.
+! ! ! ! ! ! do i = 1, verts(f(fanlen))%degree
+! ! ! ! ! ! if (verts(f(fanlen))%cols(i) /= 0) then
+! ! ! ! ! ! if (dbgcols(verts(f(fanlen))%cols(i)) .eqv. .false.) then
+! ! ! ! ! ! dbgcols(verts(f(fanlen))%cols(i)) = .true.
+! ! ! ! ! ! else
+! ! ! ! ! ! write(*,*) "duplicate color found!"
+! ! ! ! ! ! STOP
+! ! ! ! ! ! endif
+! ! ! ! ! ! endif
+! ! ! ! ! ! enddo
+! ! ! ! ! ! deallocate(dbgcols)
+#endif
         ! determine free color at end of fan that has not already been used in the construction of the fan.
         col = 0
         i = 1
         do while ((i <= maxcols) .and. (col == 0))
             if (usedcols(i) .neqv. .true.) then
                 j = 1
-                do while ((j <= verts(f(fanlen))%degree) .and. (verts(f(fanlen))%cols(j) /= i))
+                do while ((j < verts(f(fanlen))%degree) .and. (verts(f(fanlen))%cols(j) /= i))
                     j = j + 1
                 enddo
+                ! special treatment for the last entry
+                if((verts(f(fanlen))%cols(j) /= i)) j = j+1
                 if (j > verts(f(fanlen))%degree) col = i
+#ifdef DEBUG
+            else
+            write (*,*) "ignoring color ", i
+#endif
             endif
             i = i + 1
         enddo
-        ! col is now a small color that is free at f(1)
-        ! determine incident edge that has exactly this color
-        i = 1
-        do while ((f(fanlen + 1) == 0) .and. (i <= this%degree))
-            if (this%cols(i) == col) f(fanlen + 1) = this%nbrs(i)
+        if (col /= 0) then
+            ! col is now a small color that is free at f(fanlen)
+            ! determine incident edge that has exactly this color
+            i = 1
+            do while ((f(fanlen + 1) == 0) .and. (i <= this%degree))
+                if (this%cols(i) == col) f(fanlen + 1) = this%nbrs(i)
             i = i + 1
-        end do
-        fanlen = fanlen + 1
-        usedcols(col) = .true.
-        ! let's see wether we can stop the fan construction since we find matching colors
-        rescol = find_common_free_color(this, verts(f(fanlen)), maxcols)
+            end do
+            fanlen = fanlen + 1
+            usedcols(col) = .true.
+            ! let's see wether we can stop the fan construction since we find matching colors
+            rescol = find_common_free_color(this, verts(f(fanlen)), maxcols)
+        else
+            ! force termination of fan construction
+            write (*,*) "fan construction stops. No color available that has NOT been already used in the fan."
+            ctr = this%degree
+        endif
         ctr = ctr + 1
     enddo
     deallocate(usedcols)
