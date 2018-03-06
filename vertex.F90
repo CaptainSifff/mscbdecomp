@@ -191,7 +191,7 @@ end function vertex_findfreecolor
 !--------------------------------------------------------------------
 function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(rescol)
     class(Vertex) :: this
-    class(Vertex), dimension(:), intent(in) :: verts
+    type(Vertex), dimension(:), intent(in) :: verts
     integer, intent(out) :: fanlen
     integer :: rescol
     integer, dimension(:), intent(out) :: f
