@@ -159,25 +159,19 @@ endif
 #endif
                 if (oldcol .ne. 0) then
                     ! the end of the fan has a free color -> down-shifting sufficient
-                    do k = 1, fanlen-1
-                        tmpcol = verts(i)%get_edge_color(fan(k+1))
-                        call verts(i)%set_edge_color(fan(k), tmpcol)
-                        call verts(fan(k))%set_edge_color(i, tmpcol)
-                    enddo
-                    call verts(i)%set_edge_color(fan(fanlen), oldcol)
-                    call verts(fan(fanlen))%set_edge_color(i, oldcol)
+                    call downshift_fan_and_set_color(i, fan, fanlen, oldcol, verts)
                 else
                 ! FIXME: this part needs improvement so that longer paths can be inverted
                     ! We would need to inverse a path
 !#ifdef DEBUG
-                    write (*,*) "construct path of colors", verts(i)%findfreecolor(maxcolors), &
-                    & verts(fan(fanlen))%findfreecolor(maxcolors), "at", i, fan(fanlen)
+                    write (*,*) "construct path of colors", verts(i)%findfreecolor(), &
+                    & verts(fan(fanlen))%findfreecolor(), "at", i, fan(fanlen)
 !#endif
 
 ! set up the start of the path at the fan
 !determine the two colors for the c-d path
-                    col(1) = verts(fan(fanlen))%findfreecolor(maxcolors)
-                    col(2) = verts(i)%findfreecolor(maxcolors)
+                    col(1) = verts(fan(fanlen))%findfreecolor()
+                    col(2) = verts(i)%findfreecolor()
                     call p%init()
                     do k = 1, verts(i)%degree
                         if (verts(i)%cols(k) == col(1)) nbr1 = k
@@ -265,20 +259,7 @@ write (*,*) "checking ", k
                     enddo
                     write (*,*) "determined ", ver
                     ! downshift the fan from position w
-!                    STOP
-                    do k = 1, ver-1
-                        tmpcol = verts(i)%get_edge_color(fan(k+1))
-                        call verts(i)%set_edge_color(fan(k), tmpcol)
-                        call verts(fan(k))%set_edge_color(i, tmpcol)
-                    enddo
-                    call verts(i)%set_edge_color(fan(ver), col(1))
-                    call verts(fan(ver))%set_edge_color(i, col(1))
-                    
-                    
-                    
-                        ! if still no color cry BUG
-!                        write (*,*) "BUG!"
-!                        STOP
+                    call downshift_fan_and_set_color(i, fan, ver, col(1), verts)
                     else
 !#ifdef DEBUG
                         write(*,*) availablecolor
@@ -344,7 +325,7 @@ allocate( nodes(nredges), usedcols(maxcolors))
         endif
         enddo
     enddo
-!STOP
+STOP
     call fe%init(nodes, usedcolors)
     deallocate(nodes, usedcols)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 

@@ -161,13 +161,16 @@ function Path_length(this) result(l)
     l = this%tail-1
 end function 
 
-function vertex_findfreecolor(this, maxcols)  result(col)
+function vertex_findfreecolor(this)  result(col)
     class(Vertex) :: this
     integer :: maxcols
     integer :: col
     integer :: i
-    logical :: usedcols(maxcols)
+    logical :: usedcols(size(this%nbrbycol))
 
+!     do i = maxcols, 1, -1
+!     if(this%nbrbycol(i) == 0) col = i
+!     enddo
     usedcols = .false.
     do i = 1, this%degree
         if(this%cols(i) /= 0) usedcols(this%cols(i)) = .true.
@@ -418,6 +421,7 @@ subroutine vertex_init(this, deg, maxcols)
     this%degree = deg
     allocate(this%nbrs(deg), this%cols(deg), this%nbrbycol(maxcols))
     this%cols = 0
+    this%nbrbycol = 0
 end subroutine vertex_init
 
 !--------------------------------------------------------------------
@@ -459,7 +463,10 @@ subroutine vertex_set_edge_color(this, vert, col)
     integer :: i
     
     do i = 1, this%degree
-        if(this%nbrs(i) == vert) this%cols(i) = col
+        if(this%nbrs(i) == vert) then
+            this%cols(i) = col
+            this%nbrbycol(col) = i
+        endif
     enddo
 end subroutine vertex_set_edge_color
 
@@ -533,5 +540,34 @@ function find_common_free_color(v, w, maxcols) result(col)
     enddo
     deallocate(usedcols)
 end function find_common_free_color
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function performs a downshit of a fan that was previously
+!> constructed around fanpos. After that it sets the new available edge 
+!> to the color col.
+!
+!> @param[in] fanpos the position where the vertex was constructed
+!> @param[in] fan the actual length of the Vizing fan
+!> @param[in] tail the length of the fan
+!> @param[in] col the new color
+!> @param[inout] the array of vertices.
+!--------------------------------------------------------------------
+subroutine downshift_fan_and_set_color(fanpos, fan, tail, col, verts)
+    integer, allocatable, dimension(:), intent(in) :: fan
+    type(Vertex), allocatable, dimension(:) :: verts
+    integer, intent(in) :: tail, fanpos, col
+    integer :: tmpcol, k
+    do k = 1, tail-1
+        tmpcol = verts(fanpos)%get_edge_color(fan(k+1))
+        call verts(fanpos)%set_edge_color(fan(k), tmpcol)
+        call verts(fan(k))%set_edge_color(fanpos, tmpcol)
+    enddo
+    call verts(fanpos)%set_edge_color(fan(tail), col)
+    call verts(fan(tail))%set_edge_color(fanpos, col)
+end subroutine
 
 end module vertex_mod
