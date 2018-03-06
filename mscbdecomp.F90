@@ -66,16 +66,16 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 400
+ndim = 2000
 allocate(A(ndim, ndim))
-!do seed = 1000,10000
-seed = 1000
+do seed = 1000,10000
+!seed = 1000
 write (*,*) "seed", seed
 call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.4) then
+if (rand() > 0.6) then
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -107,9 +107,20 @@ nredges = 0
     do i = 1, ndim
         cnt = 0
         do j = 1, ndim
-            if(A(i, j) /= 0.D0) cnt = cnt +1
+            if(A(i, j) /= 0.D0) cnt = cnt + 1
         enddo
-        call verts(i)%init(cnt)
+        deltag = max(deltag, cnt)
+    enddo
+
+    write (*,*) "Delta(G) = ", deltag
+    maxcolors = deltag + 1
+    
+    do i = 1, ndim
+        cnt = 0
+        do j = 1, ndim
+            if(A(i, j) /= 0.D0) cnt = cnt + 1
+        enddo
+        call verts(i)%init(cnt, maxcolors)
         k = 1
         do j = 1, ndim
             if(A(i, j) /= 0.D0) then
@@ -117,10 +128,7 @@ nredges = 0
                 k = k + 1
             endif
         enddo
-        deltag = max(deltag, cnt)
     enddo
-    write (*,*) "Delta(G) = ", deltag
-    maxcolors = deltag + 1
 
     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
     ! we obtain the edges by looking in the upper triangular part of the matrix for non-zero entries
@@ -376,7 +384,7 @@ vec = 1.D0
    enddo
    call fe%dealloc()
    deallocate(U, vec, energ, M1, M2, M3, verts, res2)
-!enddo
+enddo
 ! do i = 1,80
 !    M1 = 1.D0
 !    call fe%matmult(M1)

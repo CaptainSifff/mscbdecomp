@@ -72,6 +72,7 @@ module vertex_mod
         integer :: degree
         integer, allocatable, dimension(:) :: nbrs
         integer, allocatable, dimension(:) :: cols
+        integer, allocatable, dimension(:) :: nbrbycol
     contains
         procedure :: init => vertex_init
         procedure :: destruct => vertex_destruct
@@ -104,8 +105,9 @@ end function
 
 subroutine Path_init(this)
     class(Path) :: this
+    integer :: temp
     this%tail = 1
-    this%avamem = 16
+    this%avamem = 4096/SIZEOF(temp) ! allocate a page of memory
     allocate(this%vertices(this%avamem), this%nbrindex(this%avamem))
 end subroutine Path_init
 
@@ -117,8 +119,20 @@ end subroutine
 subroutine Path_pushback(this, vert, nbridx)
     class(Path) :: this
     integer, intent(in) :: vert, nbridx
+    integer, allocatable, dimension(:) :: temp1, temp2
+    integer :: i
     if (this%tail == this%avamem) then
+        ! reallocate the memory
         write (*,*) "not enough space!"
+        call MOVE_ALLOC(temp1, this%vertices)
+        call MOVE_ALLOC(temp2, this%nbrindex)
+        allocate(this%vertices(2*this%avamem), this%nbrindex(2*this%avamem))
+        do i = 1, this%avamem
+            this%vertices(i) = temp1(i)
+            this%nbrindex(i) = temp2(i)
+        enddo
+        deallocate(temp1, temp2)
+        this%avamem = 2*this%avamem
         STOP
     endif
     this%vertices(this%tail) = vert
@@ -395,11 +409,12 @@ subroutine FullExp_init(this, nodes, usedcolors)
     deallocate(nredges, edgectr)
 end subroutine FullExp_init
 
-subroutine vertex_init(this, deg)
+subroutine vertex_init(this, deg, maxcols)
     class(vertex) :: this
     integer, intent(in) :: deg
+    integer :: maxcols
     this%degree = deg
-    allocate(this%nbrs(deg), this%cols(deg))
+    allocate(this%nbrs(deg), this%cols(deg), this%nbrbycol(maxcols))
     this%cols = 0
 end subroutine vertex_init
 
@@ -457,7 +472,7 @@ end subroutine vertex_set_edge_color
 !--------------------------------------------------------------------
 subroutine vertex_destruct(this)
     class(vertex) :: this
-    deallocate(this%nbrs, this%cols)
+    deallocate(this%nbrs, this%cols, this%nbrbycol)
 end subroutine vertex_destruct
 
 !--------------------------------------------------------------------
