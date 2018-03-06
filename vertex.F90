@@ -80,8 +80,27 @@ module vertex_mod
         procedure :: get_edge_color => vertex_get_edge_color
         procedure :: find_maximal_fan => vertex_find_maximal_fan
         procedure :: findfreecolor => vertex_findfreecolor
+        procedure :: iscolorfree => vertex_iscolorfree
     end type Vertex
 contains
+
+function vertex_iscolorfree(this, col) result(r)
+    class(Vertex) :: this
+    integer, intent(in) :: col
+    logical :: r
+    integer :: k
+    
+    r = .true.
+    do k = 1, this%degree
+    ! some debug check while we are here...
+        if ((this%cols(k) == col) .and. (r .eqv. .false.)) then
+        write (*,*) "duplicate color found!"
+        STOP
+        endif
+        
+        if (this%cols(k) == col) r = .false.
+    enddo
+end function
 
 subroutine Path_init(this)
     class(Path) :: this
