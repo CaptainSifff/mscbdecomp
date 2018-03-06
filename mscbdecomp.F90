@@ -154,22 +154,20 @@ endif
                 write (*,*) "out of colors. Trying to downshift Vizing fan"
                 allocate(fan(verts(i)%degree))
                 oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
-#ifdef DEBUG
+#ifndef NDEBUG
                write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
 #endif
                 if (oldcol .ne. 0) then
                     ! the end of the fan has a free color -> down-shifting sufficient
                     call downshift_fan_and_set_color(i, fan, fanlen, oldcol, verts)
                 else
-                ! FIXME: this part needs improvement so that longer paths can be inverted
                     ! We would need to inverse a path
-!#ifdef DEBUG
+#ifndef NDEBUG
                     write (*,*) "construct path of colors", verts(i)%findfreecolor(), &
                     & verts(fan(fanlen))%findfreecolor(), "at", i, fan(fanlen)
-!#endif
-
-! set up the start of the path at the fan
-!determine the two colors for the c-d path
+#endif
+                    ! set up the start of the path at the fan
+                    ! determine the two colors for the c-d path
                     col(1) = verts(fan(fanlen))%findfreecolor()
                     col(2) = verts(i)%findfreecolor()
                     call p%init()
@@ -199,71 +197,39 @@ endif
                         endif
                     enddo
                     write (*, *) "Length of path", p%length()
-!                    write (*, *) p%vertices
-                    call p%back(ver, nbr) 
-!                    write (*, *) verts(ver)%nbrs(nbr)
-! ! ! ! ! !                    STOP 
-! ! ! ! !                     ! let's try to construct a small two piece path....
-! ! ! ! !                     ! find edge with the color that is free at the fan end
-! ! ! ! !                     tmpcol = verts(fan(fanlen))%findfreecolor(maxcolors)
-! ! ! ! !                     oldcol = verts(i)%findfreecolor(maxcolors)
-! ! ! ! !                     do k = 1, verts(i)%degree
-! ! ! ! !                         if (verts(i)%cols(k) == tmpcol) nbr1 = verts(i)%nbrs(k)
-! ! ! ! !                     enddo
-! ! ! ! !                     !find the second
-! ! ! ! !                     do k = 1, verts(nbr1)%degree
-! ! ! ! !                         if (verts(nbr1)%cols(k) == oldcol) nbr2 = verts(i)%nbrs(k)
-! ! ! ! !                     enddo
-                    ! check wether this is sufficient
-!                     do k = 1, verts(nbr2)%degree
-!                         if (verts(nbr2)%cols(k) == tmpcol) then
-!                             write (*,*) "inversion of paths longer than two not implemented!"
-!                         STOP
-!                         endif
-!                     enddo
-!                    write (*,*) i, nbr1, nbr2
-                    !switch the path
-! ! ! ! !                     call verts(i)%set_edge_color(nbr1, oldcol);
-! ! ! ! !                     call verts(nbr1)%set_edge_color(i, oldcol);
-! ! ! ! !                 
-! ! ! ! !                     call verts(nbr1)%set_edge_color(nbr2, tmpcol);
-! ! ! ! !                     call verts(nbr2)%set_edge_color(nbr1, tmpcol);
-k = 1
- colctr = 2
-do while(k<=p%length())
-!write (*,*) " k =", k, "", p%vertices
-call p%at(k, ver, nbr)
-verts(ver)%cols(nbr) = col(colctr)
-!write (*,*) ver
-call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
-k = k + 1
-                            colctr = colctr + 1
-                            if (colctr > 2) colctr = 1
-enddo
+                    ! Now we switch the colors on the path
+                    k = 1
+                    colctr = 2
+                    do while(k<=p%length())
+                        call p%at(k, ver, nbr)
+                        verts(ver)%cols(nbr) = col(colctr)
+                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
+                        k = k + 1
+                        colctr = colctr + 1
+                        if (colctr > 2) colctr = 1
+                    enddo
                     ! try again to obtain a color
                     availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
                     if (availablecolor == 0) then
-                    ! We have to do a proper downshifting
-                    ! find w in fan()
-                    k = 1
-                    ver = 0
-                    write (*,*) "fanlen = ", fanlen
-                    do while (k < fanlen) ! I believe we do not need to touch the fan end. Due to the path inversion the color should not be free.
-write (*,*) "checking ", k
-                        if(verts(fan(k))%iscolorfree(col(1))) then
-                        write(*,*) "color found at ",k, "of ", fanlen
-                        ver = k
-                         k = fanlen
-                        endif
-                        k = k+1
-                    enddo
-                    write (*,*) "determined ", ver
-                    ! downshift the fan from position w
-                    call downshift_fan_and_set_color(i, fan, ver, col(1), verts)
+                        ! We have to do a proper downshifting
+                        ! find w in fan()
+                        k = 1
+                        ver = 0
+                        do while (k < fanlen) ! I believe we do not need to touch the fan end. Due to the path inversion the color should not be free.
+                            if(verts(fan(k))%iscolorfree(col(1))) then
+                                write(*,*) "color found at ",k, "of ", fanlen
+                                ver = k
+                                k = fanlen
+                            endif
+                            k = k+1
+                        enddo
+                        write (*,*) "determined ", ver
+                        ! downshift the fan until the position of w
+                        call downshift_fan_and_set_color(i, fan, ver, col(1), verts)
                     else
-!#ifdef DEBUG
+#ifndef NDEBUG
                         write(*,*) availablecolor
-!#endif
+#endif
                         ! set that color
                         call verts(i)%set_edge_color(j, availablecolor);
                         call verts(j)%set_edge_color(i, availablecolor);
@@ -272,7 +238,7 @@ write (*,*) "checking ", k
                 endif
                 deallocate(fan)
             else
-#ifdef DEBUG
+#ifndef NDEBUG
                 write(*,*) availablecolor
 #endif
                 ! set that color
