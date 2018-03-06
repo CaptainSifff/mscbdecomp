@@ -185,9 +185,11 @@ end function vertex_findfreecolor
 !> @brief 
 !> This function constructs a Vizing Fan.
 !
-!> @param[in] this The vertex that we consider
+!> @param[in] this The vertex where we construct a Vizing fan around
 !> @param[in] verts the total array of all vertices
 !> @param[in] v0 The incident vertex that still is uncolored.
+!> @param[out] f a linear array where we construct the fan
+!> @param[out] fanlen The length of the entire fan
 !--------------------------------------------------------------------
 function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(rescol)
     class(Vertex) :: this
