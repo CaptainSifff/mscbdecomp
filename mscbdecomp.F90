@@ -25,7 +25,7 @@ program mscbdecomp
     implicit none
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
     integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol, nbr1, nbr2
-    integer ::  curcol, col(2), colctr
+    integer :: curcol, col(2), colctr
     integer :: ver, nbr, curver
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
@@ -69,13 +69,13 @@ program mscbdecomp
 ndim = 400
 allocate(A(ndim, ndim))
 !do seed = 1, 1000
-seed = 1234
+seed = 1236
 write (*,*) "seed", seed
 call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.2) then
+if (rand() > 0.25) then
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -146,9 +146,9 @@ endif
                 write (*,*) "out of colors. Trying to downshift Vizing fan"
                 allocate(fan(verts(i)%degree))
                 oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
-#ifdef DEBUG
+!#ifdef DEBUG
                 write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
-#endif
+!#endif
                 if (oldcol .ne. 0) then
                     ! the end of the fan has a free color -> down-shifting sufficient
                     do k = 1, fanlen-1
@@ -180,7 +180,6 @@ endif
                     colctr = 2
                     do while(stoppath .eqv. .false.)
                         ! current vertex
-!                        int ver, nbr
                         call p%back(ver, nbr)
                         curver = verts(ver)%nbrs(nbr)
                         ! find nbr of current color
@@ -201,18 +200,18 @@ endif
 !                    write (*, *) p%vertices
                     call p%back(ver, nbr) 
 !                    write (*, *) verts(ver)%nbrs(nbr)
-!                    STOP 
-                    ! let's try to construct a small two piece path....
-                    ! find edge with the color that is free at the fan end
-                    tmpcol = verts(fan(fanlen))%findfreecolor(maxcolors)
-                    oldcol = verts(i)%findfreecolor(maxcolors)
-                    do k = 1, verts(i)%degree
-                        if (verts(i)%cols(k) == tmpcol) nbr1 = verts(i)%nbrs(k)
-                    enddo
-                    !find the second
-                    do k = 1, verts(nbr1)%degree
-                        if (verts(nbr1)%cols(k) == oldcol) nbr2 = verts(i)%nbrs(k)
-                    enddo
+! ! ! ! ! !                    STOP 
+! ! ! ! !                     ! let's try to construct a small two piece path....
+! ! ! ! !                     ! find edge with the color that is free at the fan end
+! ! ! ! !                     tmpcol = verts(fan(fanlen))%findfreecolor(maxcolors)
+! ! ! ! !                     oldcol = verts(i)%findfreecolor(maxcolors)
+! ! ! ! !                     do k = 1, verts(i)%degree
+! ! ! ! !                         if (verts(i)%cols(k) == tmpcol) nbr1 = verts(i)%nbrs(k)
+! ! ! ! !                     enddo
+! ! ! ! !                     !find the second
+! ! ! ! !                     do k = 1, verts(nbr1)%degree
+! ! ! ! !                         if (verts(nbr1)%cols(k) == oldcol) nbr2 = verts(i)%nbrs(k)
+! ! ! ! !                     enddo
                     ! check wether this is sufficient
 !                     do k = 1, verts(nbr2)%degree
 !                         if (verts(nbr2)%cols(k) == tmpcol) then
@@ -242,6 +241,18 @@ enddo
                     ! try again to obtain a color
                     availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
                     if (availablecolor == 0) then
+                    ! We have to do a proper downshifting
+                    ! find w in fan()
+                    k = 1
+                    ver = 0
+                    do while (k <= fanlen)
+write (*,*) "checking ", k                    
+                        if(verts(fan(k))%iscolorfree(col(1))) then
+                        write(*,*) "color found at ",k, "of ", fanlen
+                        endif
+                        k = k+1
+                    enddo
+                    
                         ! if still no color cry BUG
                         write (*,*) "BUG!"
                         STOP
@@ -293,6 +304,10 @@ allocate( nodes(nredges), usedcols(maxcolors))
             ! check validity of the coloring locally
             usedcols = .false.
             do l = 1, verts(i)%degree
+                if(verts(i)%cols(l) == 0) then
+                write (*,*) "forgotten edge found!"
+                STOP
+                endif
                 if (usedcols(verts(i)%cols(l)) .eqv. .true. ) then
                     write (*,*) "invalid coloring!!"
                     STOP
