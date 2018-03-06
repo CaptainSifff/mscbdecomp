@@ -68,14 +68,14 @@ program mscbdecomp
 
 ndim = 400
 allocate(A(ndim, ndim))
-!do seed = 1, 1000
-seed = 1236
+!do seed = 1000,10000
+seed = 1000
 write (*,*) "seed", seed
 call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.25) then
+if (rand() > 0.4) then
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -146,9 +146,9 @@ endif
                 write (*,*) "out of colors. Trying to downshift Vizing fan"
                 allocate(fan(verts(i)%degree))
                 oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
-!#ifdef DEBUG
-                write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
-!#endif
+#ifdef DEBUG
+               write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
+#endif
                 if (oldcol .ne. 0) then
                     ! the end of the fan has a free color -> down-shifting sufficient
                     do k = 1, fanlen-1
@@ -245,17 +245,32 @@ enddo
                     ! find w in fan()
                     k = 1
                     ver = 0
-                    do while (k <= fanlen)
-write (*,*) "checking ", k                    
+                    write (*,*) "fanlen = ", fanlen
+                    do while (k < fanlen) ! I believe we do not need to touch the fan end. Due to the path inversion the color should not be free.
+write (*,*) "checking ", k
                         if(verts(fan(k))%iscolorfree(col(1))) then
                         write(*,*) "color found at ",k, "of ", fanlen
+                        ver = k
+                         k = fanlen
                         endif
                         k = k+1
                     enddo
+                    write (*,*) "determined ", ver
+                    ! downshift the fan from position w
+!                    STOP
+                    do k = 1, ver-1
+                        tmpcol = verts(i)%get_edge_color(fan(k+1))
+                        call verts(i)%set_edge_color(fan(k), tmpcol)
+                        call verts(fan(k))%set_edge_color(i, tmpcol)
+                    enddo
+                    call verts(i)%set_edge_color(fan(ver), col(1))
+                    call verts(fan(ver))%set_edge_color(i, col(1))
+                    
+                    
                     
                         ! if still no color cry BUG
-                        write (*,*) "BUG!"
-                        STOP
+!                        write (*,*) "BUG!"
+!                        STOP
                     else
 !#ifdef DEBUG
                         write(*,*) availablecolor
