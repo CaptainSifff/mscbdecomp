@@ -220,7 +220,7 @@ endif
                         ! find w in fan()
                         k = 1
                         ver = 0
-                        do while (k < fanlen) ! I believe we do not need to touch the fan end. Due to the path inversion the color should not be free.
+                        do while (k <= fanlen)
                             if(verts(fan(k))%iscolorfree(col(1))) then
                                 write(*,*) "color found at ",k, "of ", fanlen
                                 ver = k
