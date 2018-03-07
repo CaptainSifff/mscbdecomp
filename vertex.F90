@@ -163,7 +163,6 @@ end function
 
 function vertex_findfreecolor(this)  result(col)
     class(Vertex) :: this
-    integer :: maxcols
     integer :: col
     integer :: i
     logical :: usedcols(size(this%nbrbycol))
@@ -176,7 +175,7 @@ function vertex_findfreecolor(this)  result(col)
         if(this%cols(i) /= 0) usedcols(this%cols(i)) = .true.
     enddo
     col = 0
-    do i = maxcols, 1, -1
+    do i = size(this%nbrbycol), 1, -1
         if(usedcols(i) .eqv. .false.) col = i
     enddo
 end function vertex_findfreecolor
@@ -193,12 +192,13 @@ end function vertex_findfreecolor
 !> @param[in] v0 The incident vertex that still is uncolored.
 !> @param[out] f a linear array where we construct the fan
 !> @param[out] fanlen The length of the entire fan
+!> @result rescol
 !--------------------------------------------------------------------
 function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(rescol)
     class(Vertex) :: this
     type(Vertex), dimension(:), intent(in) :: verts
     integer, intent(out) :: fanlen
-    integer :: rescol
+    integer :: rescol, tmpcol
     integer, dimension(:), intent(out) :: f
     integer :: v0, maxcols
     integer :: col, i, j, ctr
@@ -241,8 +241,14 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
         ! determine free color at end of fan that has not already been used in the construction of the fan.
         col = 0
         i = 1
+        tmpcol = 0
         do while ((i <= maxcols) .and. (col == 0))
-            if (usedcols(i) .neqv. .true.) then
+            if (usedcols(i) .eqv. .false.) then
+!            write (*,*) "checking color ", i
+!                 if(verts(f(fanlen))%nbrbycol(i) == 0) then
+!                 write (*,*) "free:", i
+!                 col = i
+!                 endif
                 j = 1
                 do while ((j < verts(f(fanlen))%degree) .and. (verts(f(fanlen))%cols(j) /= i))
                     j = j + 1
@@ -257,6 +263,10 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
             endif
             i = i + 1
         enddo
+!         if (tmpcol /= col) then
+!         write (*,*) "col = ", col, "tmpcol = ", tmpcol
+!         write (*,*) "BUG", f(100000)
+!         endif
         if (col /= 0) then
             ! col is now a small color that is free at f(fanlen)
             ! determine incident edge that has exactly this color
@@ -481,6 +491,7 @@ end subroutine vertex_set_edge_color
 !--------------------------------------------------------------------
 subroutine vertex_destruct(this)
     class(vertex) :: this
+
     deallocate(this%nbrs, this%cols, this%nbrbycol)
 end subroutine vertex_destruct
 
@@ -499,6 +510,7 @@ end subroutine vertex_destruct
 function vertex_any_color_available(this) result(n)
     class(vertex), intent(in) :: this
     integer :: n, i
+
     n = 0
     do i = this%degree, 1, -1
         if (this%cols(i) == 0) n = this%nbrs(i)
