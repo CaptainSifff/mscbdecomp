@@ -66,16 +66,18 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 2000
+!ndim = 2000
+ndim=7
 allocate(A(ndim, ndim))
-do seed = 1000,10000
+!do seed = 1000,10000
 !seed = 1000
+seed = 1061
 write (*,*) "seed", seed
 call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.6) then
+if (rand() > 0.2) then !0.6
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -202,8 +204,11 @@ endif
                     colctr = 2
                     do while(k<=p%length())
                         call p%at(k, ver, nbr)
+                        tmpcol = verts(ver)%cols(nbr)
                         verts(ver)%cols(nbr) = col(colctr)
-                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
+                        verts(ver)%nbrbycol(col(colctr)) = nbr
+                        verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
+                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr)) ! consistent data for nbrbycols not enforced
                         k = k + 1
                         colctr = colctr + 1
                         if (colctr > 2) colctr = 1
@@ -331,7 +336,7 @@ vec = 1.D0
    enddo
    call fe%dealloc()
    deallocate(U, vec, energ, M1, M2, M3, verts, res2)
-enddo
+!enddo
 ! do i = 1,80
 !    M1 = 1.D0
 !    call fe%matmult(M1)
