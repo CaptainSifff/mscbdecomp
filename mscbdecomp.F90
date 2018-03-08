@@ -302,33 +302,35 @@ endif
 k = 0
 allocate( nodes(nredges), usedcols(maxcolors))
     do i = 1, ndim-1
+        ! check validity of the coloring locally
+        usedcols = .false.
+        do l = 1, verts(i)%degree
+            if(verts(i)%cols(l) == 0) then
+                write (*,*) "forgotten edge found!"
+                STOP
+            endif
+            if (usedcols(verts(i)%cols(l)) .eqv. .true. ) then
+                write (*,*) "invalid coloring!!"
+                STOP
+            else
+                usedcols(verts(i)%cols(l)) = .true.
+            endif
+        enddo
+    
         do j = i+1, ndim
         if (A(i, j) /= 0.D0) then
             k = k + 1
             nodes(k)%x = i
             nodes(k)%y = j
             nodes(k)%axy = A(i,j)
-            ! check validity of the coloring locally
-            usedcols = .false.
-            do l = 1, verts(i)%degree
-                if(verts(i)%cols(l) == 0) then
-                write (*,*) "forgotten edge found!"
-                STOP
-                endif
-                if (usedcols(verts(i)%cols(l)) .eqv. .true. ) then
-                    write (*,*) "invalid coloring!!"
-                    STOP
-                else
-                    usedcols(verts(i)%cols(l)) = .true.
-                endif
-            enddo
+            
             do l = 1, verts(i)%degree
                 if(verts(i)%nbrs(l) == j) nodes(k)%col = verts(i)%cols(l)
             enddo
         endif
         enddo
     enddo
-  STOP
+STOP
     call fe%init(nodes, usedcolors)
     deallocate(nodes, usedcols)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
