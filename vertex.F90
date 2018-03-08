@@ -554,7 +554,7 @@ end function vertex_any_color_available
 !
 !> @param[in] v one vertex that we consider
 !> @param[in] w the other vertex that we consider
-!> @param[in] maxcolors The available maximum number colors
+!> @param[in] maxcols The available maximum number colors
 !> @return the smallest common available color
 !--------------------------------------------------------------------
 function find_common_free_color(v, w, maxcols) result(col)
@@ -562,22 +562,11 @@ function find_common_free_color(v, w, maxcols) result(col)
     class(vertex), intent(in) :: v, w
     integer, intent(in) :: maxcols
     integer :: col, i
-    logical, allocatable, dimension(:) :: usedcols
 
     col = 0
-    allocate(usedcols(maxcols))
-    usedcols = .false.
-    do i = 1, v%degree
-        if(v%cols(i) /= 0) usedcols(v%cols(i)) = .true.
-    enddo
-    do i = 1, w%degree
-        if(w%cols(i) /= 0) usedcols(w%cols(i)) = .true.
-    enddo
-    ! The locations where we find zeroes in this array are colors that are unused in both vertices
     do i = maxcols, 1, -1
-        if (usedcols(i) .eqv. .false.) col = i
+        if ((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) col = i
     enddo
-    deallocate(usedcols)
 end function find_common_free_color
 
 !--------------------------------------------------------------------
