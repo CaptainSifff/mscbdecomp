@@ -483,28 +483,28 @@ subroutine vertex_set_edge_color(this, vert, col)
     integer, intent(in) :: vert, col
     integer :: i
     
-    do i = 1, this%degree
-        if(this%nbrs(i) == vert) then
+    i = 1
+    do while ((this%nbrs(i) .ne. vert) .and. (i <= this%degree))
+    i = i+1
+    enddo
 #ifndef NDEBUG
         write (*,*) "setting color", col, "to idx", i, "which is", vert
 #endif
             this%cols(i) = col
             this%nbrbycol(col) = i
-        endif
-    enddo
-#ifndef NDEBUG
-    ! let's check the consistency
-    do i = 1, size(this%nbrbycol)
-    if (this%nbrbycol(i) .ne. 0) then
-        if(this%cols(this%nbrbycol(i)) .ne. i ) then
-        write (*,*) "inconsistency!"
-        write (*,*) this%cols
-        write (*,*) this%nbrbycol
-        write (*,*) this%nbrbycol(10000)
-        endif
-    endif
-    enddo
-#endif
+! #ifndef NDEBUG
+!     ! let's check the consistency
+!     do i = 1, size(this%nbrbycol)
+!     if (this%nbrbycol(i) .ne. 0) then
+!         if(this%cols(this%nbrbycol(i)) .ne. i ) then
+!         write (*,*) "inconsistency!"
+!         write (*,*) this%cols
+!         write (*,*) this%nbrbycol
+!         write (*,*) this%nbrbycol(10000)
+!         endif
+!     endif
+!     enddo
+! #endif
 end subroutine vertex_set_edge_color
 
 !--------------------------------------------------------------------
