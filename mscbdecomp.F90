@@ -316,18 +316,15 @@ allocate( nodes(nredges), usedcols(maxcolors))
                 usedcols(verts(i)%cols(l)) = .true.
             endif
         enddo
-    
-        do j = i+1, ndim
-        if (A(i, j) /= 0.D0) then
-            k = k + 1
-            nodes(k)%x = i
-            nodes(k)%y = j
-            nodes(k)%axy = A(i,j)
-            
-            do l = 1, verts(i)%degree
-                if(verts(i)%nbrs(l) == j) nodes(k)%col = verts(i)%cols(l)
-            enddo
-        endif
+        do l = 1, maxcolors
+            nbr1 = verts(i)%nbrs(verts(i)%nbrbycol(l))
+            if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
+                k = k+1
+                nodes(k)%x = i
+                nodes(k)%y = nbr1
+                nodes(k)%axy = A(i, nbr1)
+                nodes(k)%col = l
+            endif
         enddo
     enddo
 STOP
