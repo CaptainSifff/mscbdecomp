@@ -66,18 +66,18 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-!ndim = 2000
-ndim=7
+ndim = 2000
+!ndim=7
 allocate(A(ndim, ndim))
 !do seed = 1000,10000
-!seed = 1000
+!seed = 4887
 seed = 1061
 write (*,*) "seed", seed
 call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.2) then !0.6
+if (rand() > 0.6) then ! 0.2
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -137,6 +137,9 @@ nredges = 0
     do i = 1, ndim-1
         do j = i+1, ndim
         if (A(i, j) /= 0.D0) then
+!         write (*,*) "current state of vert", 5
+!             write (*,*) verts(5)%nbrbycol
+!             write (*,*) verts(5)%cols
         ! Edge found between vertex i and j
         ! Let's check wether we have free edges at every vertex
             nredges = nredges + 1
@@ -153,13 +156,18 @@ endif
             if(availablecolor == 0) then
                 ! Our starting vertex is verts(i), our target vertex is verts(j)
                 ! Now we need to construct a Vizing fan around verts(i)
-                write (*,*) "out of colors. Trying to downshift Vizing fan"
+#ifndef NDEBUG
+                write (*,*) "Out of colors. construct fan around", i
+#endif
                 allocate(fan(verts(i)%degree))
                 oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
 #ifndef NDEBUG
-               write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
+!               write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
 #endif
                 if (oldcol .ne. 0) then
+#ifndef NDEBUG
+                write (*,*) "Free color available in fan -> downshift"
+#endif
                     ! the end of the fan has a free color -> down-shifting sufficient
                     call downshift_fan_and_set_color(i, fan, fanlen, oldcol, verts)
                 else
@@ -202,13 +210,37 @@ endif
                     ! Now we switch the colors on the path
                     k = 1
                     colctr = 2
+                    ! erase colors first
                     do while(k<=p%length())
                         call p%at(k, ver, nbr)
                         tmpcol = verts(ver)%cols(nbr)
-                        verts(ver)%cols(nbr) = col(colctr)
-                        verts(ver)%nbrbycol(col(colctr)) = nbr
+!                        verts(ver)%cols(nbr) = col(colctr)
+                        
+                        
+                        
+ !                       verts(ver)%nbrbycol(col(colctr)) = nbr
                         verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
-                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr)) ! consistent data for nbrbycols not enforced
+                        
+                        call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
+!                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
+                        k = k + 1
+!                        colctr = colctr + 1
+!                        if (colctr > 2) colctr = 1
+                    enddo
+                    ! Now we perform the actual setting of the new path colors
+                    k = 1                   
+                    do while(k<=p%length())
+                        call p%at(k, ver, nbr)
+!                        tmpcol = verts(ver)%cols(nbr)
+                        verts(ver)%cols(nbr) = col(colctr)
+                        
+                        
+                        
+                        verts(ver)%nbrbycol(col(colctr)) = nbr
+!                        verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
+                        
+!                        call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
+                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
                         k = k + 1
                         colctr = colctr + 1
                         if (colctr > 2) colctr = 1
@@ -244,7 +276,7 @@ endif
                 deallocate(fan)
             else
 #ifndef NDEBUG
-                write(*,*) availablecolor
+                write(*,*) "setting color ", availablecolor," to edge ", i,j
 #endif
                 ! set that color
                 call verts(i)%set_edge_color(j, availablecolor);
@@ -296,7 +328,7 @@ allocate( nodes(nredges), usedcols(maxcolors))
         endif
         enddo
     enddo
-STOP
+  STOP
     call fe%init(nodes, usedcolors)
     deallocate(nodes, usedcols)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 

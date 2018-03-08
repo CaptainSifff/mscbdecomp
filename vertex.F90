@@ -77,6 +77,7 @@ module vertex_mod
         procedure :: init => vertex_init
         procedure :: destruct => vertex_destruct
         procedure :: any_color_available => vertex_any_color_available
+        procedure :: erase_edge_color => vertex_erase_edge_color
         procedure :: set_edge_color => vertex_set_edge_color
         procedure :: get_edge_color => vertex_get_edge_color
         procedure :: find_maximal_fan => vertex_find_maximal_fan
@@ -214,59 +215,26 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
     rescol = 0
     usedcols = .false.
     do while ((ctr < this%degree) .and. (rescol == 0))
-#ifdef DEBUG
-    write (*,*) "try to attach to fan"
-! ! ! ! ! ! ! check that the fantail has valid color information
-! ! ! ! ! ! ! check that no wrong color has crept in
-! ! ! ! ! ! do i = 1, verts(f(fanlen))%degree
-! ! ! ! ! ! if (verts(f(fanlen))%cols(i) > maxcols) then
-! ! ! ! ! ! write (*,*) "invalid color found!"
-! ! ! ! ! ! STOP
-! ! ! ! ! ! endif
-! ! ! ! ! ! enddo
-! ! ! ! ! ! allocate (dbgcols(maxcols))
-! ! ! ! ! ! dbgcols = .false.
-! ! ! ! ! ! do i = 1, verts(f(fanlen))%degree
-! ! ! ! ! ! if (verts(f(fanlen))%cols(i) /= 0) then
-! ! ! ! ! ! if (dbgcols(verts(f(fanlen))%cols(i)) .eqv. .false.) then
-! ! ! ! ! ! dbgcols(verts(f(fanlen))%cols(i)) = .true.
-! ! ! ! ! ! else
-! ! ! ! ! ! write(*,*) "duplicate color found!"
-! ! ! ! ! ! STOP
-! ! ! ! ! ! endif
-! ! ! ! ! ! endif
-! ! ! ! ! ! enddo
-! ! ! ! ! ! deallocate(dbgcols)
-#endif
         ! determine free color at end of fan that has not already been used in the construction of the fan.
         col = 0
         i = 1
         tmpcol = 0
         do while ((i <= maxcols) .and. (col == 0))
             if (usedcols(i) .eqv. .false.) then
-!            write (*,*) "checking color ", i
-!                 if(verts(f(fanlen))%nbrbycol(i) == 0) then
-!                 write (*,*) "free:", i
-!                 col = i
-!                 endif
-                j = 1
-                do while ((j < verts(f(fanlen))%degree) .and. (verts(f(fanlen))%cols(j) /= i))
-                    j = j + 1
-                enddo
-                ! special treatment for the last entry
-                if((verts(f(fanlen))%cols(j) /= i)) j = j+1
-                if (j > verts(f(fanlen))%degree) col = i
-#ifdef DEBUG
-            else
-            write (*,*) "ignoring color ", i
+#ifndef NDEBUG
+           write (*,*) "checking color ", i, "fanlen = ", fanlen
+           write (*,*) "looking at vertex", f(fanlen)
+            write (*,*) verts(f(fanlen))%nbrbycol
+            write (*,*) verts(f(fanlen))%cols
+            write(*,*) "----------------------------------"
 #endif
+                if(verts(f(fanlen))%nbrbycol(i) == 0) then
+!                write (*,*) "free:", i
+                col = i
+                endif
             endif
             i = i + 1
         enddo
-!         if (tmpcol /= col) then
-!         write (*,*) "col = ", col, "tmpcol = ", tmpcol
-!         write (*,*) "BUG", f(100000)
-!         endif
         if (col /= 0) then
             ! col is now a small color that is free at f(fanlen)
             ! determine incident edge that has exactly this color
@@ -461,6 +429,49 @@ end function vertex_get_edge_color
 !> Florian Goth
 !
 !> @brief 
+!> erases the color of an incident edge.
+!
+!> @param[in] this The vertex that we consider
+!> @param[in] vert the index of the neighbour
+!> @param[in] col the value of the color
+!--------------------------------------------------------------------
+subroutine vertex_erase_edge_color(this, vert)
+    class(vertex) :: this
+    integer, intent(in) :: vert
+    integer :: i, tmp, k
+#ifndef NDEBUG
+    write (*,*) "Called erase_color!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+#endif
+    do i = 1, this%degree
+        if(this%nbrs(i) == vert) then
+            tmp = this%cols(i)
+#ifndef NDEBUG
+            write (*,*) "erasing color ", tmp, "of pos ", i, "which is", this%nbrs(i)
+#endif
+            this%cols(i) = 0
+            if (tmp .ne. 0) this%nbrbycol(tmp) = 0
+        endif
+    enddo
+#ifndef NDEBUG
+    ! let's check the consistency
+    do i = 1, size(this%nbrbycol)
+    if (this%nbrbycol(i) .ne. 0) then
+        if(this%cols(this%nbrbycol(i)) .ne. i ) then
+        write (*,*) "inconsistency!"
+        write (*,*) this%cols
+        write (*,*) this%nbrbycol
+        write (*,*) this%nbrbycol(10000)
+        endif
+    endif
+    enddo
+#endif
+end subroutine vertex_erase_edge_color
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
 !> Set the color of an incident edge.
 !
 !> @param[in] this The vertex that we consider
@@ -474,10 +485,26 @@ subroutine vertex_set_edge_color(this, vert, col)
     
     do i = 1, this%degree
         if(this%nbrs(i) == vert) then
+#ifndef NDEBUG
+        write (*,*) "setting color", col, "to idx", i, "which is", vert
+#endif
             this%cols(i) = col
             this%nbrbycol(col) = i
         endif
     enddo
+#ifndef NDEBUG
+    ! let's check the consistency
+    do i = 1, size(this%nbrbycol)
+    if (this%nbrbycol(i) .ne. 0) then
+        if(this%cols(this%nbrbycol(i)) .ne. i ) then
+        write (*,*) "inconsistency!"
+        write (*,*) this%cols
+        write (*,*) this%nbrbycol
+        write (*,*) this%nbrbycol(10000)
+        endif
+    endif
+    enddo
+#endif
 end subroutine vertex_set_edge_color
 
 !--------------------------------------------------------------------
@@ -564,7 +591,7 @@ end function find_common_free_color
 !
 !> @param[in] fanpos the position where the vertex was constructed
 !> @param[in] fan the actual length of the Vizing fan
-!> @param[in] tail the length of the fan
+!> @param[in] tail the length/end of the fan
 !> @param[in] col the new color
 !> @param[inout] the array of vertices.
 !--------------------------------------------------------------------
@@ -572,11 +599,28 @@ subroutine downshift_fan_and_set_color(fanpos, fan, tail, col, verts)
     integer, allocatable, dimension(:), intent(in) :: fan
     type(Vertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: tail, fanpos, col
-    integer :: tmpcol, k
+    integer :: tmpcol, k, fancols(tail-1)
+    
+    ! retrieve colors first and store them into temporary memory
+    do k = 1, tail -1
+        ! get the color of the fan edge at k+1
+        fancols(k) = verts(fanpos)%get_edge_color(fan(k+1))
+    enddo
+    ! erase colors first that are about to become invalidated
     do k = 1, tail-1
-        tmpcol = verts(fanpos)%get_edge_color(fan(k+1))
-        call verts(fanpos)%set_edge_color(fan(k), tmpcol)
-        call verts(fan(k))%set_edge_color(fanpos, tmpcol)
+        ! erase current color at fanpos
+        call verts(fanpos)%erase_edge_color(fan(k))    
+        ! erase current color at fan(k)
+        call verts(fan(k))%erase_edge_color(fanpos)
+    enddo
+    call verts(fanpos)%erase_edge_color(fan(tail))    
+    call verts(fan(tail))%erase_edge_color(fanpos)
+    
+    do k = 1, tail-1
+        ! set to new color
+        call verts(fanpos)%set_edge_color(fan(k), fancols(k))
+        ! set current color from fan(k) to fanpos
+        call verts(fan(k))%set_edge_color(fanpos, fancols(k))
     enddo
     call verts(fanpos)%set_edge_color(fan(tail), col)
     call verts(fan(tail))%set_edge_color(fanpos, col)
