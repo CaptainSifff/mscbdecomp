@@ -238,11 +238,7 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
         if (col /= 0) then
             ! col is now a small color that is free at f(fanlen)
             ! determine incident edge that has exactly this color
-            i = 1
-            do while ((f(fanlen + 1) == 0) .and. (i <= this%degree))
-                if (this%cols(i) == col) f(fanlen + 1) = this%nbrs(i)
-            i = i + 1
-            end do
+            f(fanlen+1) = this%nbrs(this%nbrbycol(col))
             fanlen = fanlen + 1
             usedcols(col) = .true.
             ! let's see wether we can stop the fan construction since we find matching colors
