@@ -202,8 +202,9 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
     integer :: rescol, tmpcol
     integer, dimension(:), intent(out) :: f
     integer :: v0, maxcols
-    integer :: col, i, j, ctr
+    integer :: col, i, j, ctr, nrfreecols
     logical, allocatable, dimension(:) :: usedcols !< in usedcols we track the colors we have chosen during construction of the fan.
+    integer, allocatable, dimension(:) :: freecols ! determine the colors that are available at this
     
 !!!!!!!    logical, allocatable, dimension(:) :: dbgcols
     
@@ -214,6 +215,19 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
     ctr = 1
     rescol = 0
     usedcols = .false.
+    nrfreecols = 0
+
+    do i = 1, maxcols
+        if (this%nbrbycol(i) == 0) nrfreecols = nrfreecols + 1
+    enddo
+    allocate(freecols(nrfreecols))
+    j = 1
+    do i = 1, maxcols
+        if (this%nbrbycol(i) == 0) then
+        freecols(j) = i
+        j = j + 1
+        endif
+    enddo
     do while ((ctr < this%degree) .and. (rescol == 0))
         ! determine free color at end of fan that has not already been used in the construction of the fan.
         col = 0
@@ -242,7 +256,10 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
             fanlen = fanlen + 1
             usedcols(col) = .true.
             ! let's see wether we can stop the fan construction since we find matching colors
-            rescol = find_common_free_color(this, verts(f(fanlen)), maxcols)
+            rescol = 0
+            do i = nrfreecols, 1, -1
+                if (verts(f(fanlen))%nbrbycol(freecols(i)) == 0) rescol = freecols(i)
+            enddo
         else
             ! force termination of fan construction
             write (*,*) "fan construction stops. No color available that has NOT been already used in the fan."
@@ -250,7 +267,7 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
         endif
         ctr = ctr + 1
     enddo
-    deallocate(usedcols)
+    deallocate(usedcols, freecols)
 end function vertex_find_maximal_fan
 
 subroutine SingleColExp_vecmult(this, vec)
@@ -477,10 +494,11 @@ end subroutine vertex_erase_edge_color
 subroutine vertex_set_edge_color(this, vert, col)
     class(vertex) :: this
     integer, intent(in) :: vert, col
-    integer :: i
+    integer :: i, up
     
     i = 1
-    do while ((this%nbrs(i) .ne. vert) .and. (i <= this%degree))
+    up = size(this%nbrs)
+    do while ((this%nbrs(i) .ne. vert) .and. (i <= up ))
     i = i+1
     enddo
 #ifndef NDEBUG
@@ -560,9 +578,14 @@ function find_common_free_color(v, w, maxcols) result(col)
     integer :: col, i
 
     col = 0
-    do i = maxcols, 1, -1
-        if ((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) col = i
+    i = 1
+    do while (.not.((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) .and. i <= maxcols)
+    i = i + 1
     enddo
+    if (i <= maxcols) col = i
+!     do i = maxcols, 1, -1
+!         if ((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) col = i
+!     enddo
 end function find_common_free_color
 
 !--------------------------------------------------------------------
