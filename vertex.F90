@@ -615,14 +615,12 @@ subroutine downshift_fan_and_set_color(fanpos, fan, tail, col, verts)
         fancols(k) = verts(fanpos)%get_edge_color(fan(k+1))
     enddo
     ! erase colors first that are about to become invalidated
-    do k = 1, tail-1
+    do k = 2, tail
         ! erase current color at fanpos
         call verts(fanpos)%erase_edge_color(fan(k))    
         ! erase current color at fan(k)
         call verts(fan(k))%erase_edge_color(fanpos)
     enddo
-    call verts(fanpos)%erase_edge_color(fan(tail))    
-    call verts(fan(tail))%erase_edge_color(fanpos)
     
     do k = 1, tail-1
         ! set to new color
