@@ -34,7 +34,7 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
     type(Vertex), allocatable, dimension(:) :: verts
-    integer, allocatable, dimension(:) :: fan
+    integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol
     logical, allocatable, dimension(:) :: usedcols
     logical :: check, stoppath
     type(node), allocatable, dimension(:) :: nodes
@@ -69,9 +69,9 @@ program mscbdecomp
 ndim = 2000
 !ndim=7
 allocate(A(ndim, ndim))
-!do seed = 1000,10000
+do seed = 1000,1010
 !seed = 4887
-seed = 1061
+!seed = 1061
 write (*,*) "seed", seed
 call srand(seed)
 A=0
@@ -159,32 +159,42 @@ endif
 #ifndef NDEBUG
                 write (*,*) "Out of colors. construct fan around", i
 #endif
-                allocate(fan(verts(i)%degree))
-                oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fanlen)
+                allocate(fan(verts(i)%degree), fannbr(verts(i)%degree), fanedgecol(verts(i)%degree))
+                
+                fannbr = 0
+                fanedgecol = 0
+                do k = 1, verts(i)%degree
+                    if(verts(i)%nbrs(k) == j) fannbr(1) = k
+                enddo
+                oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fannbr, fanedgecol, fanlen)
 #ifndef NDEBUG
-!               write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
+                write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
 #endif
                 if (oldcol .ne. 0) then
 #ifndef NDEBUG
                 write (*,*) "Free color available in fan -> downshift"
 #endif
                     ! the end of the fan has a free color -> down-shifting sufficient
-                    call downshift_fan_and_set_color(i, fan, fanlen, oldcol, verts)
+                    call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, fanlen, oldcol, verts)
                 else
                     ! We would need to inverse a path
-#ifndef NDEBUG
-                    write (*,*) "construct path of colors", verts(i)%findfreecolor(), &
-                    & verts(fan(fanlen))%findfreecolor(), "at", i, fan(fanlen)
-#endif
                     ! set up the start of the path at the fan
                     ! determine the two colors for the c-d path
                     col(1) = verts(fan(fanlen))%findfreecolor()
                     col(2) = verts(i)%findfreecolor()
+#ifndef NDEBUG
+                    write (*,*) "construct path of colors", col(2), col(1), "at", i, fan(fanlen)
+#endif
                     call p%init()
                     do k = 1, verts(i)%degree
                         if (verts(i)%cols(k) == col(1)) nbr1 = k
                     enddo
+                    ! We start the path at verts(i)
                     ! (i, nbr1) is the first piece of the path. nbr1 is the position within the arrays of verts(i)
+                    ! The edge i -> nbr1 has color col(1)
+#ifndef NDEBUG
+                    write (*,*) "starting path to ", nbr1, "which is", verts(i)%nbrs(nbr1)
+#endif
                     call p%pushback(i, nbr1)
                     stoppath = .false.
                     colctr = 2
@@ -214,18 +224,10 @@ endif
                     do while(k<=p%length())
                         call p%at(k, ver, nbr)
                         tmpcol = verts(ver)%cols(nbr)
-!                        verts(ver)%cols(nbr) = col(colctr)
-                        
-                        
-                        
- !                       verts(ver)%nbrbycol(col(colctr)) = nbr
                         verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
                         
                         call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
-!                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
                         k = k + 1
-!                        colctr = colctr + 1
-!                        if (colctr > 2) colctr = 1
                     enddo
                     ! Now we perform the actual setting of the new path colors
                     k = 1                   
@@ -233,9 +235,7 @@ endif
                         call p%at(k, ver, nbr)
 !                        tmpcol = verts(ver)%cols(nbr)
                         verts(ver)%cols(nbr) = col(colctr)
-                        
-                        
-                        
+
                         verts(ver)%nbrbycol(col(colctr)) = nbr
 !                        verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
                         
@@ -261,8 +261,21 @@ endif
                             k = k+1
                         enddo
                         write (*,*) "determined ", ver
+                        ! the path inversion has modified the information contained in the auxiliary arrays
+                        ! fannbr and fanedgecol -> We need to update that
+                        ! The edge that has been modified had color col(1) and now has color col(2)
+                        ! search the edge that has changed
+                        k = 1
+                        do while ((k <= fanlen) .and. (fanedgecol(k) .ne. col(1)))
+                            k = k+1
+                        enddo
+                        if (k > fanlen) then
+                            write (*,*) "changed color ", col(1), "not found"
+                            STOP
+                        endif
+                        fanedgecol(k) = col(2)
                         ! downshift the fan until the position of w
-                        call downshift_fan_and_set_color(i, fan, ver, col(1), verts)
+                        call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, ver, col(1), verts)
                     else
 #ifndef NDEBUG
                         write(*,*) availablecolor
@@ -273,7 +286,7 @@ endif
                     endif
                     call p%dealloc()
                 endif
-                deallocate(fan)
+                deallocate(fan, fannbr, fanedgecol)
             else
 #ifndef NDEBUG
                 write(*,*) "setting color ", availablecolor," to edge ", i,j
@@ -327,9 +340,10 @@ allocate( nodes(nredges), usedcols(maxcolors))
             endif
         enddo
     enddo
-STOP
+!STOP
     call fe%init(nodes, usedcolors)
     deallocate(nodes, usedcols)
+!STOP
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
 ! ! ! !     do i = 1, ndim
@@ -347,7 +361,6 @@ vec = 1.D0
  allocate(lwork(dn), rwork(dn), res2(ndim))
    U = A
    call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
-   deallocate(lwork, rwork)
    energ = exp(energ)
    ! apply to vec
    alpha = 1.D0
@@ -362,12 +375,13 @@ vec = 1.D0
    res2 = res-vec
 !    write (*,*) res2
    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+   deallocate(lwork, rwork)
    do i = 1, size(verts)
     call verts(i)%destruct()
    enddo
    call fe%dealloc()
    deallocate(U, vec, energ, M1, M2, M3, verts, res2)
-!enddo
+enddo
 ! do i = 1,80
 !    M1 = 1.D0
 !    call fe%matmult(M1)

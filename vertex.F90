@@ -192,15 +192,17 @@ end function vertex_findfreecolor
 !> @param[in] verts the total array of all vertices
 !> @param[in] v0 The incident vertex that still is uncolored.
 !> @param[out] f a linear array where we construct the fan
+!> @param[out] fannbr An array with the positions of the vertices at verts(fanpos)
+!> @param[out] fanedgecol The colors of the edges in the fan
 !> @param[out] fanlen The length of the entire fan
 !> @result rescol
 !--------------------------------------------------------------------
-function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(rescol)
+function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol, fanlen) result(rescol)
     class(Vertex) :: this
     type(Vertex), dimension(:), intent(in) :: verts
     integer, intent(out) :: fanlen
     integer :: rescol, tmpcol
-    integer, dimension(:), intent(out) :: f
+    integer, dimension(:), intent(out) :: f, fannbr, fanedgecol
     integer :: v0, maxcols
     integer :: col, i, j, ctr, nrfreecols
     logical, allocatable, dimension(:) :: usedcols !< in usedcols we track the colors we have chosen during construction of the fan.
@@ -252,6 +254,8 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fanlen) result(res
         if (col /= 0) then
             ! col is now a small color that is free at f(fanlen)
             ! determine incident edge that has exactly this color
+            fannbr(fanlen+1) = this%nbrbycol(col)
+            fanedgecol(fanlen+1) = col
             f(fanlen+1) = this%nbrs(this%nbrbycol(col))
             fanlen = fanlen + 1
             usedcols(col) = .true.
@@ -451,7 +455,7 @@ end function vertex_get_edge_color
 subroutine vertex_erase_edge_color(this, vert)
     class(vertex) :: this
     integer, intent(in) :: vert
-    integer :: i, tmp, k
+    integer :: i, tmp
 #ifndef NDEBUG
     write (*,*) "Called erase_color!!!!!!!!!!!!!!!!!!!!!!!!!!!"
 #endif
@@ -593,40 +597,41 @@ end function find_common_free_color
 !> Florian Goth
 !
 !> @brief 
-!> This function performs a downshit of a fan that was previously
+!> This function performs a downshift of a fan that was previously
 !> constructed around fanpos. After that it sets the new available edge 
 !> to the color col.
 !
 !> @param[in] fanpos the position where the vertex was constructed
 !> @param[in] fan the actual length of the Vizing fan
+!> @param[in] fannbr the positions of the neighbours in the array associated with verts(fanpos)
+!> @param[in] fanedgecol the colors of the respective edges
 !> @param[in] tail the length/end of the fan
 !> @param[in] col the new color
 !> @param[inout] the array of vertices.
 !--------------------------------------------------------------------
-subroutine downshift_fan_and_set_color(fanpos, fan, tail, col, verts)
-    integer, allocatable, dimension(:), intent(in) :: fan
+subroutine downshift_fan_and_set_color(fanpos, fan, fannbr, fanedgecol, tail, col, verts)
+    integer, allocatable, dimension(:), intent(in) :: fan, fannbr, fanedgecol
     type(Vertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: tail, fanpos, col
-    integer :: tmpcol, k, fancols(tail-1)
-    
-    ! retrieve colors first and store them into temporary memory
-    do k = 1, tail -1
-        ! get the color of the fan edge at k+1
-        fancols(k) = verts(fanpos)%get_edge_color(fan(k+1))
-    enddo
+    integer :: k
+
     ! erase colors first that are about to become invalidated
     do k = 2, tail
         ! erase current color at fanpos
-        call verts(fanpos)%erase_edge_color(fan(k))    
+        
+        verts(fanpos)%cols(fannbr(k)) = 0
+        verts(fanpos)%nbrbycol(fanedgecol(k)) = 0
+        
         ! erase current color at fan(k)
-        call verts(fan(k))%erase_edge_color(fanpos)
+        verts(fan(k))%cols( verts(fan(k))%nbrbycol(fanedgecol(k)) ) = 0
+        verts(fan(k))%nbrbycol(fanedgecol(k)) = 0
     enddo
     
     do k = 1, tail-1
         ! set to new color
-        call verts(fanpos)%set_edge_color(fan(k), fancols(k))
+        call verts(fanpos)%set_edge_color(fan(k), fanedgecol(k+1))
         ! set current color from fan(k) to fanpos
-        call verts(fan(k))%set_edge_color(fanpos, fancols(k))
+        call verts(fan(k))%set_edge_color(fanpos, fanedgecol(k+1))
     enddo
     call verts(fanpos)%set_edge_color(fan(tail), col)
     call verts(fan(tail))%set_edge_color(fanpos, col)
