@@ -613,27 +613,40 @@ subroutine downshift_fan_and_set_color(fanpos, fan, fannbr, fanedgecol, tail, co
     integer, allocatable, dimension(:), intent(in) :: fan, fannbr, fanedgecol
     type(Vertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: tail, fanpos, col
-    integer :: k
+    integer :: k, oldpos
 
-    ! erase colors first that are about to become invalidated
+    ! erase colors first that are about to become invalidated    
     do k = 2, tail
         ! erase current color at fanpos
-        
         verts(fanpos)%cols(fannbr(k)) = 0
         verts(fanpos)%nbrbycol(fanedgecol(k)) = 0
-        
-        ! erase current color at fan(k)
-        verts(fan(k))%cols( verts(fan(k))%nbrbycol(fanedgecol(k)) ) = 0
-        verts(fan(k))%nbrbycol(fanedgecol(k)) = 0
     enddo
     
-    do k = 1, tail-1
+    do k = 2, tail-1
         ! set to new color
-        call verts(fanpos)%set_edge_color(fan(k), fanedgecol(k+1))
-        ! set current color from fan(k) to fanpos
-        call verts(fan(k))%set_edge_color(fanpos, fanedgecol(k+1))
+        verts(fanpos)%cols(fannbr(k)) = fanedgecol(k+1)
+        verts(fanpos)%nbrbycol(fanedgecol(k+1)) = fannbr(k)
+        
+        ! set current color from fan(k) to fanpos. erase old entres first
+        oldpos = verts(fan(k))%nbrbycol(fanedgecol(k))
+        verts(fan(k))%nbrbycol(fanedgecol(k)) = 0
+
+        verts(fan(k))%cols(oldpos) = fanedgecol(k+1)
+!         
+         verts(fan(k))%nbrbycol(fanedgecol(k+1)) = oldpos
+        ! erase current color at fan(k)
     enddo
-    call verts(fanpos)%set_edge_color(fan(tail), col)
+    
+    verts(fanpos)%cols(fannbr(1)) = fanedgecol(2)
+    verts(fanpos)%nbrbycol(fanedgecol(2)) = fannbr(1)
+    call verts(fan(1))%set_edge_color(fanpos, fanedgecol(2))
+    
+    ! erase current color at fan(tail)
+    verts(fan(tail))%cols( verts(fan(tail))%nbrbycol(fanedgecol(tail)) ) = 0
+    verts(fan(tail))%nbrbycol(fanedgecol(tail)) = 0
+    ! set to new color
+    verts(fanpos)%cols(fannbr(tail)) = col
+    verts(fanpos)%nbrbycol(col) = fannbr(tail)
     call verts(fan(tail))%set_edge_color(fanpos, col)
 end subroutine
 
