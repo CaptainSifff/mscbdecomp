@@ -610,7 +610,7 @@ function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
     implicit none
     type(vertex), dimension(:), allocatable, intent(inout) :: verts
     integer, intent(in) :: maxcols, i, j
-    integer :: col, k, l, up
+    integer :: col, k, l
 
     col = 0
     k = 1
@@ -619,18 +619,10 @@ function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
     enddo
     if (k <= maxcols) then
         col = k
-        up = size(verts(i)%nbrs)
-        l = 1
-        do while ((verts(i)%nbrs(l) .ne. j) .and. (l <= up ))
-            l = l+1
-        enddo
+        l = binarysearch(verts(i)%nbrs, j)
         verts(i)%cols(l) = col
         verts(i)%nbrbycol(col) = l
-        up = size(verts(j)%nbrs)
-        l = 1
-        do while ((verts(j)%nbrs(l) .ne. i) .and. (l <= up ))
-            l = l+1
-        enddo
+        l = binarysearch(verts(j)%nbrs, i)
         verts(j)%cols(l) = col
         verts(j)%nbrbycol(col) = l
     endif
@@ -771,9 +763,10 @@ end subroutine
 
 recursive subroutine quicksort(a, first, last)
   implicit none
-  real*8  a(*), x, t
-  integer first, last
-  integer i, j
+  integer, dimension(:), intent(inout) :: a
+  integer :: x, t
+  integer :: first, last
+  integer :: i, j
 
   x = a( (first+last) / 2 )
   i = first
@@ -793,6 +786,30 @@ recursive subroutine quicksort(a, first, last)
   if (first < i-1) call quicksort(a, first, i-1)
   if (j+1 < last)  call quicksort(a, j+1, last)
 end subroutine quicksort
+
+function binarySearch (a, value)
+    integer                  :: binarySearch
+    integer, intent(in), target :: a(:)
+    integer, intent(in)         :: value
+    integer, pointer            :: p(:)
+    integer                  :: mid, offset
+ 
+    p => a
+    binarySearch = 0
+    offset = 0
+    do while (size(p) > 0)
+        mid = size(p)/2 + 1
+        if (p(mid) > value) then
+            p => p(:mid-1)
+        else if (p(mid) < value) then
+            offset = offset + mid
+            p => p(mid+1:)
+        else
+            binarySearch = offset + mid    ! SUCCESS!!
+            return
+        end if
+    end do
+end function binarySearch
 
 
 end module vertex_mod

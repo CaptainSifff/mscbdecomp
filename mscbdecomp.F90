@@ -36,7 +36,7 @@ program mscbdecomp
     type(Vertex), allocatable, dimension(:) :: verts
     integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol
     logical, allocatable, dimension(:) :: usedcols
-    logical :: check, stoppath
+    logical :: check
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
@@ -129,6 +129,7 @@ nredges = 0
                 k = k + 1
             endif
         enddo
+        call quicksort(verts(i)%nbrs, 1, verts(i)%degree)
     enddo
 
     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
