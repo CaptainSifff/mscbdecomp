@@ -143,16 +143,17 @@ nredges = 0
         ! Edge found between vertex i and j
         ! Let's check wether we have free edges at every vertex
             nredges = nredges + 1
-! A debugging check that the data is consistent:
- check = .false.
-do k = 1, verts(i)%degree
- if (verts(i)%nbrs(k) == j) check = .true.
-enddo
-if(check .eqv. .false.) then
-write(*,*) "inconsistent data!"
-STOP
-endif
-            availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
+! ! ! ! A debugging check that the data is consistent:
+! ! !  check = .false.
+! ! ! do k = 1, verts(i)%degree
+! ! !  if (verts(i)%nbrs(k) == j) check = .true.
+! ! ! enddo
+! ! ! if(check .eqv. .false.) then
+! ! ! write(*,*) "inconsistent data!"
+! ! ! STOP
+! ! ! endif
+!            availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
+availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
             if(availablecolor == 0) then
                 ! Our starting vertex is verts(i), our target vertex is verts(j)
                 ! Now we need to construct a Vizing fan around verts(i)
@@ -246,7 +247,8 @@ endif
                         if (colctr > 2) colctr = 1
                     enddo
                     ! try again to obtain a color
-                    availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
+!                    availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
+availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
                     if (availablecolor == 0) then
                         ! We have to do a proper downshifting
                         ! find w in fan()
@@ -276,24 +278,10 @@ endif
                         fanedgecol(k) = col(2)
                         ! downshift the fan until the position of w
                         call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, ver, col(1), verts)
-                    else
-#ifndef NDEBUG
-                        write(*,*) availablecolor
-#endif
-                        ! set that color
-                        call verts(i)%set_edge_color(j, availablecolor);
-                        call verts(j)%set_edge_color(i, availablecolor);
                     endif
                     call p%dealloc()
                 endif
                 deallocate(fan, fannbr, fanedgecol)
-            else
-#ifndef NDEBUG
-                write(*,*) "setting color ", availablecolor," to edge ", i,j
-#endif
-                ! set that color
-                call verts(i)%set_edge_color(j, availablecolor);
-                call verts(j)%set_edge_color(i, availablecolor);
             endif
         endif
         enddo
@@ -359,22 +347,22 @@ vec = 1.D0
   vec = 1
   dn = 3*ndim
  allocate(lwork(dn), rwork(dn), res2(ndim))
-   U = A
-   call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
-   energ = exp(energ)
-   ! apply to vec
-   alpha = 1.D0
-   beta = 0.D0
-   incx = 1
-   call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
-   do i = 1, ndim
-        res2(i) = res2(i) * energ(i)
-   enddo
-   call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
-!   write(*, *) vec
-   res2 = res-vec
-!    write (*,*) res2
-   write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+! ! ! ! ! ! ! ! ! ! ! ! !    U = A
+! ! ! ! ! ! ! ! ! ! ! ! !    call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
+! ! ! ! ! ! ! ! ! ! ! ! !    energ = exp(energ)
+! ! ! ! ! ! ! ! ! ! ! ! !    ! apply to vec
+! ! ! ! ! ! ! ! ! ! ! ! !    alpha = 1.D0
+! ! ! ! ! ! ! ! ! ! ! ! !    beta = 0.D0
+! ! ! ! ! ! ! ! ! ! ! ! !    incx = 1
+! ! ! ! ! ! ! ! ! ! ! ! !    call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
+! ! ! ! ! ! ! ! ! ! ! ! !    do i = 1, ndim
+! ! ! ! ! ! ! ! ! ! ! ! !         res2(i) = res2(i) * energ(i)
+! ! ! ! ! ! ! ! ! ! ! ! !    enddo
+! ! ! ! ! ! ! ! ! ! ! ! !    call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
+! ! ! ! ! ! ! ! ! ! ! ! ! !   write(*, *) vec
+! ! ! ! ! ! ! ! ! ! ! ! !    res2 = res-vec
+! ! ! ! ! ! ! ! ! ! ! ! ! !    write (*,*) res2
+! ! ! ! ! ! ! ! ! ! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
    deallocate(lwork, rwork)
    do i = 1, size(verts)
     call verts(i)%destruct()

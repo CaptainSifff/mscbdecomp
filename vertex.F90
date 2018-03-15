@@ -584,13 +584,60 @@ function find_common_free_color(v, w, maxcols) result(col)
     col = 0
     i = 1
     do while (.not.((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) .and. i <= maxcols)
-    i = i + 1
+        i = i + 1
     enddo
     if (i <= maxcols) col = i
 !     do i = maxcols, 1, -1
 !         if ((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) col = i
 !     enddo
 end function find_common_free_color
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function returns the smallest available color
+!> that is free at both vertices and tries to set that color if
+!> is free.
+!
+!> @param[in] v one vertex that we consider
+!> @param[in] w the other vertex that we consider
+!> @param[in] maxcols The available maximum number colors
+!> @return the smallest common available color
+!--------------------------------------------------------------------
+function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
+    implicit none
+    type(vertex), dimension(:), allocatable, intent(inout) :: verts
+    integer, intent(in) :: maxcols, i, j
+    integer :: col, k, l, up
+
+    col = 0
+    k = 1
+    do while (.not.((verts(i)%nbrbycol(k) == 0) .and. (verts(j)%nbrbycol(k) == 0)) .and. k <= maxcols)
+        k = k + 1
+    enddo
+    if (k <= maxcols) then
+        col = k
+        up = size(verts(i)%nbrs)
+        l = 1
+        do while ((verts(i)%nbrs(l) .ne. j) .and. (l <= up ))
+            l = l+1
+        enddo
+        verts(i)%cols(l) = col
+        verts(i)%nbrbycol(col) = l
+        up = size(verts(j)%nbrs)
+        l = 1
+        do while ((verts(j)%nbrs(l) .ne. i) .and. (l <= up ))
+            l = l+1
+        enddo
+        verts(j)%cols(l) = col
+        verts(j)%nbrbycol(col) = l
+    endif
+!     do i = maxcols, 1, -1
+!         if ((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) col = i
+!     enddo
+end function find_and_try_to_set_common_free_color
 
 !--------------------------------------------------------------------
 !> @author
@@ -634,7 +681,6 @@ subroutine downshift_fan_and_set_color(fanpos, fan, fannbr, fanedgecol, tail, co
         verts(fan(k))%cols(oldpos) = fanedgecol(k+1)
 !         
          verts(fan(k))%nbrbycol(fanedgecol(k+1)) = oldpos
-        ! erase current color at fan(k)
     enddo
     
     verts(fanpos)%cols(fannbr(1)) = fanedgecol(2)
