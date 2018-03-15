@@ -761,6 +761,16 @@ subroutine downshift_fan_and_set_color(fanpos, fan, fannbr, fanedgecol, tail, co
     call verts(fan(tail))%set_edge_color(fanpos, col)
 end subroutine
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> An implementation of quicksort to sort an array of integers
+!
+!> @param[in] a the array in which we search
+!> @param[in] first where to start sorting
+!> @param[in] last where to stop sorting
 recursive subroutine quicksort(a, first, last)
   implicit none
   integer, dimension(:), intent(inout) :: a
@@ -787,6 +797,16 @@ recursive subroutine quicksort(a, first, last)
   if (j+1 < last)  call quicksort(a, j+1, last)
 end subroutine quicksort
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> Binary search within the array
+!
+!> @param[in] a the array in which we search
+!> @param[in] value the value that we are looking for
+!> @result the position in the array
 function binarySearch (a, value)
     integer                  :: binarySearch
     integer, intent(in), target :: a(:)
