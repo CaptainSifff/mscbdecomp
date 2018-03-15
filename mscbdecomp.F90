@@ -26,7 +26,7 @@ program mscbdecomp
     integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
     integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol, nbr1, nbr2
     integer :: curcol, col(2), colctr
-    integer :: ver, nbr, curver
+    integer :: ver, nbr
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
@@ -42,7 +42,6 @@ program mscbdecomp
     real(kind=kind(0.D0)) :: dznrm2, zlange
     integer :: seed
     complex(kind=kind(0.D0)) :: alpha, beta
-    Type(Path) :: p
     ! initialize A with some data
     hop = 0.01
     nredges = 0
@@ -152,8 +151,7 @@ nredges = 0
 ! ! ! write(*,*) "inconsistent data!"
 ! ! ! STOP
 ! ! ! endif
-!            availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
-availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
+            availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
             if(availablecolor == 0) then
                 ! Our starting vertex is verts(i), our target vertex is verts(j)
                 ! Now we need to construct a Vizing fan around verts(i)
@@ -183,72 +181,9 @@ availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
                     ! determine the two colors for the c-d path
                     col(1) = verts(fan(fanlen))%findfreecolor()
                     col(2) = verts(i)%findfreecolor()
-#ifndef NDEBUG
-                    write (*,*) "construct path of colors", col(2), col(1), "at", i, fan(fanlen)
-#endif
-                    call p%init()
-                    do k = 1, verts(i)%degree
-                        if (verts(i)%cols(k) == col(1)) nbr1 = k
-                    enddo
-                    ! We start the path at verts(i)
-                    ! (i, nbr1) is the first piece of the path. nbr1 is the position within the arrays of verts(i)
-                    ! The edge i -> nbr1 has color col(1)
-#ifndef NDEBUG
-                    write (*,*) "starting path to ", nbr1, "which is", verts(i)%nbrs(nbr1)
-#endif
-                    call p%pushback(i, nbr1)
-                    stoppath = .false.
-                    colctr = 2
-                    do while(stoppath .eqv. .false.)
-                        ! current vertex
-                        call p%back(ver, nbr)
-                        curver = verts(ver)%nbrs(nbr)
-                        ! find nbr of current color
-                        nbr1 = 0
-                        do k = 1, verts(curver)%degree
-                            if (verts(curver)%cols(k) == col(colctr)) nbr1 = k
-                        enddo
-                        if (nbr1 == 0) then
-                            ! presumably we have reached the end of the path
-                            stoppath = .true.
-                        else
-                            call p%pushback(curver, nbr1)
-                            colctr = colctr + 1
-                            if (colctr > 2) colctr = 1
-                        endif
-                    enddo
-                    write (*, *) "Length of path", p%length()
-                    ! Now we switch the colors on the path
-                    k = 1
-                    colctr = 2
-                    ! erase colors first
-                    do while(k<=p%length())
-                        call p%at(k, ver, nbr)
-                        tmpcol = verts(ver)%cols(nbr)
-                        verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
-                        
-                        call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
-                        k = k + 1
-                    enddo
-                    ! Now we perform the actual setting of the new path colors
-                    k = 1                   
-                    do while(k<=p%length())
-                        call p%at(k, ver, nbr)
-!                        tmpcol = verts(ver)%cols(nbr)
-                        verts(ver)%cols(nbr) = col(colctr)
-
-                        verts(ver)%nbrbycol(col(colctr)) = nbr
-!                        verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
-                        
-!                        call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
-                        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
-                        k = k + 1
-                        colctr = colctr + 1
-                        if (colctr > 2) colctr = 1
-                    enddo
+                    call construct_and_invert_path(col, verts, i)
                     ! try again to obtain a color
-!                    availablecolor = find_common_free_color(verts(i), verts(j), maxcolors)
-availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
+                    availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
                     if (availablecolor == 0) then
                         ! We have to do a proper downshifting
                         ! find w in fan()
@@ -279,7 +214,6 @@ availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
                         ! downshift the fan until the position of w
                         call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, ver, col(1), verts)
                     endif
-                    call p%dealloc()
                 endif
                 deallocate(fan, fannbr, fanedgecol)
             endif

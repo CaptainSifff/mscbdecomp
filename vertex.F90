@@ -639,6 +639,79 @@ function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
 !     enddo
 end function find_and_try_to_set_common_free_color
 
+subroutine construct_and_invert_path(col, verts, start)
+    type(Vertex), allocatable, dimension(:) :: verts
+    integer, intent(in) :: col(2), start
+    integer :: k, nbr1, ver, colctr, curver, nbr, tmpcol
+    logical :: stoppath
+    Type(Path) :: p
+
+#ifndef NDEBUG
+    write (*,*) "construct path of colors", col(2), col(1), "at", i, fan(fanlen)
+#endif
+    call p%init()
+    do k = 1, verts(start)%degree
+        if (verts(start)%cols(k) == col(1)) nbr1 = k
+    enddo
+    ! We start the path at verts(i)
+    ! (i, nbr1) is the first piece of the path. nbr1 is the position within the arrays of verts(i)
+    ! The edge i -> nbr1 has color col(1)
+#ifndef NDEBUG
+    write (*,*) "starting path to ", nbr1, "which is", verts(i)%nbrs(nbr1)
+#endif
+    call p%pushback(start, nbr1)
+    stoppath = .false.
+    colctr = 2
+    do while(stoppath .eqv. .false.)
+        ! current vertex
+        call p%back(ver, nbr)
+        curver = verts(ver)%nbrs(nbr)
+        ! find nbr of current color
+        nbr1 = 0
+        do k = 1, verts(curver)%degree
+            if (verts(curver)%cols(k) == col(colctr)) nbr1 = k
+        enddo
+        if (nbr1 == 0) then
+            ! presumably we have reached the end of the path
+            stoppath = .true.
+        else
+            call p%pushback(curver, nbr1)
+            colctr = colctr + 1
+            if (colctr > 2) colctr = 1
+        endif
+    enddo
+#ifndef NDEBUG
+    write (*, *) "Length of path", p%length()
+#endif
+    ! Now we switch the colors on the path
+    k = 1
+    colctr = 2
+    ! erase colors first
+    do while(k<=p%length())
+        call p%at(k, ver, nbr)
+        tmpcol = verts(ver)%cols(nbr)
+        verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
+                        
+        call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
+        k = k + 1
+    enddo
+    ! Now we perform the actual setting of the new path colors
+    k = 1                   
+    do while(k<=p%length())
+        call p%at(k, ver, nbr)
+!       tmpcol = verts(ver)%cols(nbr)
+        verts(ver)%cols(nbr) = col(colctr)
+        verts(ver)%nbrbycol(col(colctr)) = nbr
+!       verts(ver)%nbrbycol(tmpcol) = 0 ! to be on the safe side and create consistent data
+!       call verts(verts(ver)%nbrs(nbr))%erase_edge_color(ver)
+        call verts(verts(ver)%nbrs(nbr))%set_edge_color(ver, col(colctr))
+        k = k + 1
+        colctr = colctr + 1
+        if (colctr > 2) colctr = 1
+    enddo
+    call p%dealloc()
+end subroutine
+
 !--------------------------------------------------------------------
 !> @author
 !> Florian Goth
@@ -695,5 +768,31 @@ subroutine downshift_fan_and_set_color(fanpos, fan, fannbr, fanedgecol, tail, co
     verts(fanpos)%nbrbycol(col) = fannbr(tail)
     call verts(fan(tail))%set_edge_color(fanpos, col)
 end subroutine
+
+recursive subroutine quicksort(a, first, last)
+  implicit none
+  real*8  a(*), x, t
+  integer first, last
+  integer i, j
+
+  x = a( (first+last) / 2 )
+  i = first
+  j = last
+  do
+     do while (a(i) < x)
+        i=i+1
+     end do
+     do while (x < a(j))
+        j=j-1
+     end do
+     if (i >= j) exit
+     t = a(i);  a(i) = a(j);  a(j) = t
+     i=i+1
+     j=j-1
+  end do
+  if (first < i-1) call quicksort(a, first, i-1)
+  if (j+1 < last)  call quicksort(a, j+1, last)
+end subroutine quicksort
+
 
 end module vertex_mod
