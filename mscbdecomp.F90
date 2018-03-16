@@ -23,7 +23,7 @@
 program mscbdecomp
     use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors
+    integer :: ndim, i, j, k, l, deltag, cnt, maxcolors, usedcolors, i2
     integer :: availablecolor, nredges, dn, IERR, incx, fantail, fanlen, oldcol, tmpcol, nbr1, nbr2
     integer :: curcol, col(2), colctr
     integer :: ver, nbr
@@ -65,7 +65,7 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 3000
+ndim = 5000
 !ndim=7
 allocate(A(ndim, ndim))
 do seed = 1000,1010
@@ -76,7 +76,7 @@ call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.8) then ! 0.2
+if (rand() > 0.9) then ! 0.2
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -103,40 +103,38 @@ nredges = 0
 !         enddo
 !     enddo
     allocate(verts(ndim), cntarr(ndim))
-! calculate Vertex degree
-    deltag = 0;
-    do i = 1, ndim
-        cnt = 0
-        do j = 1, ndim
-            if(A(i, j) /= 0.D0) cnt = cnt + 1
+! calculate Vertex degree and determine the number of links
+    cntarr = 0
+    do j = 1, ndim-1
+        do i = j+1, ndim
+            if(A(i, j) /= 0.D0) then
+            cntarr(i) = cntarr(i) + 1
+            cntarr(j) = cntarr(j) + 1
+            endif
         enddo
-        cntarr(i) = cnt
-        deltag = max(deltag, cnt)
     enddo
-
+    deltag = maxval(cntarr)
     write (*,*) "Delta(G) = ", deltag
     maxcolors = deltag + 1
-    
-    do i = 1, ndim
-        call verts(i)%init(cntarr(i), maxcolors)
+
+    do j = 1, ndim
+        call verts(j)%init(cntarr(j), maxcolors)
         k = 1
-        do j = 1, ndim
+        do i = 1, ndim
             if(A(i, j) /= 0.D0) then
-                verts(i)%nbrs(k) = j
+                verts(j)%nbrs(k) = i
                 k = k + 1
             endif
         enddo
-        call quicksort(verts(i)%nbrs, 1, verts(i)%degree)
+        call quicksort(verts(j)%nbrs, 1, verts(j)%degree)
     enddo
 deallocate(cntarr)
     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
     ! we obtain the edges by looking in the upper triangular part of the matrix for non-zero entries
     do i = 1, ndim-1
-        do j = i+1, ndim
-        if (A(i, j) /= 0.D0) then
-!         write (*,*) "current state of vert", 5
-!             write (*,*) verts(5)%nbrbycol
-!             write (*,*) verts(5)%cols
+        do i2 = 1, verts(i)%degree
+        if ( verts(i)%cols(i2) == 0) then
+            j = verts(i)%nbrs(i2)
         ! Edge found between vertex i and j
         ! Let's check wether we have free edges at every vertex
             nredges = nredges + 1
