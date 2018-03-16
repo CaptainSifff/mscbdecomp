@@ -19,3 +19,8 @@ Info can be found here:
 https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
 
 https://en.wikipedia.org/wiki/Misra_%26_Gries_edge_coloring_algorithm
+
+It features an implementation of the Misra-van-Gries Edge coloring algorithm.
+Stuff that can also be found is a path structure that mimics the basic behaviour of 
+the C++ vector (de to a lack of templates only for two integers.)
+as well as a quicksort on integers and a binary search on integers.
