@@ -34,7 +34,7 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
     type(Vertex), allocatable, dimension(:) :: verts
-    integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol
+    integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol, cntarr
     logical, allocatable, dimension(:) :: usedcols
     logical :: check
     type(node), allocatable, dimension(:) :: nodes
@@ -65,7 +65,7 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 2000
+ndim = 3000
 !ndim=7
 allocate(A(ndim, ndim))
 do seed = 1000,1010
@@ -76,7 +76,7 @@ call srand(seed)
 A=0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.6) then ! 0.2
+if (rand() > 0.8) then ! 0.2
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -102,7 +102,7 @@ nredges = 0
 !             endif
 !         enddo
 !     enddo
-    allocate(verts(ndim))
+    allocate(verts(ndim), cntarr(ndim))
 ! calculate Vertex degree
     deltag = 0;
     do i = 1, ndim
@@ -110,6 +110,7 @@ nredges = 0
         do j = 1, ndim
             if(A(i, j) /= 0.D0) cnt = cnt + 1
         enddo
+        cntarr(i) = cnt
         deltag = max(deltag, cnt)
     enddo
 
@@ -117,11 +118,7 @@ nredges = 0
     maxcolors = deltag + 1
     
     do i = 1, ndim
-        cnt = 0
-        do j = 1, ndim
-            if(A(i, j) /= 0.D0) cnt = cnt + 1
-        enddo
-        call verts(i)%init(cnt, maxcolors)
+        call verts(i)%init(cntarr(i), maxcolors)
         k = 1
         do j = 1, ndim
             if(A(i, j) /= 0.D0) then
@@ -131,7 +128,7 @@ nredges = 0
         enddo
         call quicksort(verts(i)%nbrs, 1, verts(i)%degree)
     enddo
-
+deallocate(cntarr)
     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
     ! we obtain the edges by looking in the upper triangular part of the matrix for non-zero entries
     do i = 1, ndim-1

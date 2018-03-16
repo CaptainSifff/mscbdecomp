@@ -201,14 +201,12 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol
     class(Vertex) :: this
     type(Vertex), dimension(:), intent(in) :: verts
     integer, intent(out) :: fanlen
-    integer :: rescol, tmpcol
+    integer :: rescol 
     integer, dimension(:), intent(out) :: f, fannbr, fanedgecol
-    integer :: v0, maxcols
+    integer, intent(in) :: v0, maxcols
     integer :: col, i, j, ctr, nrfreecols
     logical, allocatable, dimension(:) :: usedcols !< in usedcols we track the colors we have chosen during construction of the fan.
     integer, allocatable, dimension(:) :: freecols ! determine the colors that are available at this
-    
-!!!!!!!    logical, allocatable, dimension(:) :: dbgcols
     
     allocate (usedcols(maxcols))
     fanlen = 1
@@ -234,18 +232,9 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol
         ! determine free color at end of fan that has not already been used in the construction of the fan.
         col = 0
         i = 1
-        tmpcol = 0
         do while ((i <= maxcols) .and. (col == 0))
             if (usedcols(i) .eqv. .false.) then
-#ifndef NDEBUG
-           write (*,*) "checking color ", i, "fanlen = ", fanlen
-           write (*,*) "looking at vertex", f(fanlen)
-            write (*,*) verts(f(fanlen))%nbrbycol
-            write (*,*) verts(f(fanlen))%cols
-            write(*,*) "----------------------------------"
-#endif
                 if(verts(f(fanlen))%nbrbycol(i) == 0) then
-!                write (*,*) "free:", i
                 col = i
                 endif
             endif
@@ -598,9 +587,9 @@ end function find_common_free_color
 !
 !> @brief 
 !> This function returns the smallest available color
-!> that is free at both vertices and tries to set that color if
+!> that is free at both vertices and tries to set that color if it
 !> is free.
-!
+!>
 !> @param[in] v one vertex that we consider
 !> @param[in] w the other vertex that we consider
 !> @param[in] maxcols The available maximum number colors
@@ -626,9 +615,6 @@ function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
         verts(j)%cols(l) = col
         verts(j)%nbrbycol(col) = l
     endif
-!     do i = maxcols, 1, -1
-!         if ((v%nbrbycol(i) == 0) .and. (w%nbrbycol(i) == 0)) col = i
-!     enddo
 end function find_and_try_to_set_common_free_color
 
 subroutine construct_and_invert_path(col, verts, start)
