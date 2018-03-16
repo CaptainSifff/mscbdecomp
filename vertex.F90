@@ -266,7 +266,7 @@ end function vertex_find_maximal_fan
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
-    integer :: i, j
+    integer :: i
     complex(kind=kind(0.D0)) :: t1,t2
     do i = 1, this%nrofentries! for every matrix
         t1 = vec(this%nodes(i)%x)
@@ -817,5 +817,107 @@ function binarySearch (a, value)
     end do
 end function binarySearch
 
+! the Misra van-Gries decmposition
+subroutine MvG_decomp(verts, maxcolors)
+    implicit none
+    type(Vertex), allocatable, dimension(:) :: verts
+    integer, intent(in) :: maxcolors
+    integer :: i, i2, j, k, availablecolor, fanlen, oldcol, ver
+    integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol
+    integer :: col(2)
+    ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
+    ! and the help of the wikipedia page.
+    do i = 1, size(verts)-1
+        do i2 = 1, verts(i)%degree
+        if ( verts(i)%cols(i2) == 0) then
+            j = verts(i)%nbrs(i2)
+        ! Edge found between vertex i and j
+        ! Let's check wether we have free edges at every vertex
+!            nredges = nredges + 1
+! ! ! ! A debugging check that the data is consistent:
+! ! !  check = .false.
+! ! ! do k = 1, verts(i)%degree
+! ! !  if (verts(i)%nbrs(k) == j) check = .true.
+! ! ! enddo
+! ! ! if(check .eqv. .false.) then
+! ! ! write(*,*) "inconsistent data!"
+! ! ! STOP
+! ! ! endif
+            availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
+            if(availablecolor == 0) then
+                ! Our starting vertex is verts(i), our target vertex is verts(j)
+                ! Now we need to construct a Vizing fan around verts(i)
+#ifndef NDEBUG
+                write (*,*) "Out of colors. construct fan around", i
+#endif
+                allocate(fan(verts(i)%degree), fannbr(verts(i)%degree), fanedgecol(verts(i)%degree))
+                
+                fannbr = 0
+                fanedgecol = 0
+                do k = 1, verts(i)%degree
+                    if(verts(i)%nbrs(k) == j) fannbr(1) = k
+                enddo
+                oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fannbr, fanedgecol, fanlen)
+#ifndef NDEBUG
+                write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
+#endif
+                if (oldcol .ne. 0) then
+#ifndef NDEBUG
+                write (*,*) "Free color available in fan -> downshift"
+#endif
+                    ! the end of the fan has a free color -> down-shifting sufficient
+                    call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, fanlen, oldcol, verts)
+                else
+                    ! We would need to inverse a path
+                    ! set up the start of the path at the fan
+                    ! determine the two colors for the c-d path
+                    col(1) = verts(fan(fanlen))%findfreecolor()
+                    col(2) = verts(i)%findfreecolor()
+                    call construct_and_invert_path(col, verts, i)
+                    ! try again to obtain a color
+                    availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
+                    if (availablecolor == 0) then
+                        ! We have to do a proper downshifting
+                        ! find w in fan()
+                        k = 1
+                        ver = 0
+                        do while (k <= fanlen)
+                            if(verts(fan(k))%iscolorfree(col(1))) then
+#ifndef NDEBUG
+                                write(*,*) "color found at ",k, "of ", fanlen
+#endif
+                                ver = k
+                                k = fanlen
+                            endif
+                            k = k+1
+                        enddo
+#ifndef NDEBUG
+                        write (*,*) "determined ", ver
+#endif
+                        ! the path inversion has modified the information contained in the auxiliary arrays
+                        ! fannbr and fanedgecol -> We need to update that
+                        ! The edge that has been modified had color col(1) and now has color col(2)
+                        ! search the edge that has changed
+                        k = 1
+                        do while ((k <= fanlen) .and. (fanedgecol(k) .ne. col(1)))
+                            k = k+1
+                        enddo
+#ifndef NDEBUG
+                        if (k > fanlen) then
+                            write (*,*) "changed color ", col(1), "not found"
+                            STOP
+                        endif
+#endif
+                        fanedgecol(k) = col(2)
+                        ! downshift the fan until the position of w
+                        call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, ver, col(1), verts)
+                    endif
+                endif
+                deallocate(fan, fannbr, fanedgecol)
+            endif
+        endif
+        enddo
+    enddo
+end subroutine
 
 end module vertex_mod
