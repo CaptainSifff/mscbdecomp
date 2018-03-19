@@ -23,7 +23,7 @@
 program mscbdecomp
     use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, l, deltag, maxcolors, usedcolors
+    integer :: ndim, i, j, k, l, deltag, usedcolors
     integer :: nredges, dn, IERR, incx, nbr1
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
@@ -32,7 +32,6 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
     type(Vertex), allocatable, dimension(:) :: verts
-    integer, allocatable, dimension(:) :: cntarr
     logical, allocatable, dimension(:) :: usedcols
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
@@ -62,7 +61,7 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 6000
+ndim = 400
 !ndim=7
 allocate(A(ndim, ndim))
 do seed = 1000,1010
@@ -71,155 +70,38 @@ do seed = 1000,1010
 write (*,*) "seed", seed
 call srand(seed)
 A=0
+nredges = 0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.9) then ! 0.2
+if (rand() > 0.6) then ! 0.2
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
+nredges = nredges + 1
 endif
 enddo
 enddo
-nredges = 0
+write (*,*) "created matrix with", nredges, "edges."
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
-! check input
-    ! first check diagonal
-    do i = 1, ndim
-        if(A(i, i) /= 0.D0) then
-            write (*, *) "the main-diagonal must be zero!"
-            stop
-        endif
-    enddo
-    ! check symmetry
-!     do i = 1, ndim
-!         do j = 1, ndim
-!             if(A(i,j) /= conjg(A(j,i))) then
-!                 write (*, *) "Non-hermitian matrix encountered!"
-!                 stop
-!             endif
-!         enddo
-!     enddo
-    allocate(verts(ndim), cntarr(ndim))
-! calculate Vertex degree and determine the number of links
-    cntarr = 0
+    verts = mat2verts(A)
+    call MvG_decomp(verts)
     nredges = 0
-    do j = 1, ndim-1
-        do i = j+1, ndim
-            if(A(i, j) /= 0.D0) then
-            cntarr(i) = cntarr(i) + 1
-            cntarr(j) = cntarr(j) + 1
-            nredges = nredges + 1
+    do i = 1, ndim-1
+        do k = 1, verts(i)%degree
+            if (verts(i)%nbrs(k) > i) nredges = nredges + 1
+            if (verts(i)%nbrs(k) > size(verts)) then
+                write(*,*) "invalid nbr!!!"
+                STOP
             endif
         enddo
     enddo
-    deltag = maxval(cntarr)
-    write (*,*) "Delta(G) = ", deltag
-    maxcolors = deltag + 1
-
-    do j = 1, ndim
-        call verts(j)%init(cntarr(j), maxcolors)
-        k = 1
-        do i = 1, ndim
-            if(A(i, j) /= 0.D0) then
-                verts(j)%nbrs(k) = i
-                k = k + 1
-            endif
-        enddo
-        call quicksort(verts(j)%nbrs, 1, verts(j)%degree)
-    enddo
-deallocate(cntarr)
-call MvG_decomp(verts, maxcolors)
-! ! !     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
-! ! !     do i = 1, ndim-1
-! ! !         do i2 = 1, verts(i)%degree
-! ! !         if ( verts(i)%cols(i2) == 0) then
-! ! !             j = verts(i)%nbrs(i2)
-! ! !         ! Edge found between vertex i and j
-! ! !         ! Let's check wether we have free edges at every vertex
-! ! !             nredges = nredges + 1
-! ! ! ! ! ! ! A debugging check that the data is consistent:
-! ! ! ! ! !  check = .false.
-! ! ! ! ! ! do k = 1, verts(i)%degree
-! ! ! ! ! !  if (verts(i)%nbrs(k) == j) check = .true.
-! ! ! ! ! ! enddo
-! ! ! ! ! ! if(check .eqv. .false.) then
-! ! ! ! ! ! write(*,*) "inconsistent data!"
-! ! ! ! ! ! STOP
-! ! ! ! ! ! endif
-! ! !             availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
-! ! !             if(availablecolor == 0) then
-! ! !                 ! Our starting vertex is verts(i), our target vertex is verts(j)
-! ! !                 ! Now we need to construct a Vizing fan around verts(i)
-! ! ! #ifndef NDEBUG
-! ! !                 write (*,*) "Out of colors. construct fan around", i
-! ! ! #endif
-! ! !                 allocate(fan(verts(i)%degree), fannbr(verts(i)%degree), fanedgecol(verts(i)%degree))
-! ! !                 
-! ! !                 fannbr = 0
-! ! !                 fanedgecol = 0
-! ! !                 do k = 1, verts(i)%degree
-! ! !                     if(verts(i)%nbrs(k) == j) fannbr(1) = k
-! ! !                 enddo
-! ! !                 oldcol = verts(i)%find_maximal_fan(verts, j, maxcolors, fan, fannbr, fanedgecol, fanlen)
-! ! ! #ifndef NDEBUG
-! ! !                 write (*,*) "oldcol = ", oldcol, "fanlen = ", fanlen, fan
-! ! ! #endif
-! ! !                 if (oldcol .ne. 0) then
-! ! ! #ifndef NDEBUG
-! ! !                 write (*,*) "Free color available in fan -> downshift"
-! ! ! #endif
-! ! !                     ! the end of the fan has a free color -> down-shifting sufficient
-! ! !                     call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, fanlen, oldcol, verts)
-! ! !                 else
-! ! !                     ! We would need to inverse a path
-! ! !                     ! set up the start of the path at the fan
-! ! !                     ! determine the two colors for the c-d path
-! ! !                     col(1) = verts(fan(fanlen))%findfreecolor()
-! ! !                     col(2) = verts(i)%findfreecolor()
-! ! !                     call construct_and_invert_path(col, verts, i)
-! ! !                     ! try again to obtain a color
-! ! !                     availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
-! ! !                     if (availablecolor == 0) then
-! ! !                         ! We have to do a proper downshifting
-! ! !                         ! find w in fan()
-! ! !                         k = 1
-! ! !                         ver = 0
-! ! !                         do while (k <= fanlen)
-! ! !                             if(verts(fan(k))%iscolorfree(col(1))) then
-! ! !                                 write(*,*) "color found at ",k, "of ", fanlen
-! ! !                                 ver = k
-! ! !                                 k = fanlen
-! ! !                             endif
-! ! !                             k = k+1
-! ! !                         enddo
-! ! !                         write (*,*) "determined ", ver
-! ! !                         ! the path inversion has modified the information contained in the auxiliary arrays
-! ! !                         ! fannbr and fanedgecol -> We need to update that
-! ! !                         ! The edge that has been modified had color col(1) and now has color col(2)
-! ! !                         ! search the edge that has changed
-! ! !                         k = 1
-! ! !                         do while ((k <= fanlen) .and. (fanedgecol(k) .ne. col(1)))
-! ! !                             k = k+1
-! ! !                         enddo
-! ! !                         if (k > fanlen) then
-! ! !                             write (*,*) "changed color ", col(1), "not found"
-! ! !                             STOP
-! ! !                         endif
-! ! !                         fanedgecol(k) = col(2)
-! ! !                         ! downshift the fan until the position of w
-! ! !                         call downshift_fan_and_set_color(i, fan, fannbr, fanedgecol, ver, col(1), verts)
-! ! !                     endif
-! ! !                 endif
-! ! !                 deallocate(fan, fannbr, fanedgecol)
-! ! !             endif
-! ! !         endif
-! ! !         enddo
-! ! !     enddo
-! Determine the number of used colors
-    usedcolors = deltag
+    ! Determine the number of used colors
+    deltag = 0
+    usedcolors = 0
     do i = 1, ndim
+        deltag = max(deltag, verts(i)%degree)
         do j = 1, verts(i)%degree
-            if (verts(i)%cols(j) == deltag + 1) usedcolors = deltag + 1
+            usedcolors = max(usedcolors, verts(i)%cols(j))
         enddo
     enddo
     write (*,*) "Nr edges: ", nredges
@@ -230,7 +112,7 @@ call MvG_decomp(verts, maxcolors)
     endif
 ! set up data in an edges based layout
 k = 0
-allocate( nodes(nredges), usedcols(maxcolors))
+allocate( nodes(nredges), usedcols(usedcolors))
     do i = 1, ndim-1
         ! check validity of the coloring locally
         usedcols = .false.
@@ -246,7 +128,7 @@ allocate( nodes(nredges), usedcols(maxcolors))
                 usedcols(verts(i)%cols(l)) = .true.
             endif
         enddo
-        do l = 1, maxcolors
+        do l = 1, usedcolors
             nbr1 = verts(i)%nbrs(verts(i)%nbrbycol(l))
             if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
                 k = k+1

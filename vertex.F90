@@ -425,6 +425,7 @@ function vertex_get_edge_color(this, vert) result(col)
     integer :: col
     integer :: i
     
+    col  = 0
     do i = 1, this%degree
         if(this%nbrs(i) == vert) col = this%cols(i)
     enddo
@@ -757,6 +758,7 @@ end subroutine
 !> @param[in] a the array in which we search
 !> @param[in] first where to start sorting
 !> @param[in] last where to stop sorting
+!--------------------------------------------------------------------
 recursive subroutine quicksort(a, first, last)
   implicit none
   integer, dimension(:), intent(inout) :: a
@@ -793,6 +795,7 @@ end subroutine quicksort
 !> @param[in] a the array in which we search
 !> @param[in] value the value that we are looking for
 !> @result the position in the array
+!--------------------------------------------------------------------
 function binarySearch (a, value)
     integer                  :: binarySearch
     integer, intent(in), target :: a(:)
@@ -817,14 +820,97 @@ function binarySearch (a, value)
     end do
 end function binarySearch
 
-! the Misra van-Gries decmposition
-subroutine MvG_decomp(verts, maxcolors)
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> A function that transforms a matrix into our internal data structure
+!
+!> @param[in] A the matrix that we bring into our internal datastructure
+!> @result our internal data structure of graph vertices
+!--------------------------------------------------------------------
+function mat2verts(A) result(verts)
+    implicit none
+    complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:), intent(in) :: A
+    type(Vertex), allocatable :: verts(:)
+    integer :: ndim, i, j, deltag, maxcolors, k
+    integer, allocatable, dimension(:) :: cntarr
+    
+    ndim = size(A, 1)
+    ! check input
+    ! first check diagonal
+    do i = 1, ndim
+        if(A(i, i) /= 0.D0) then
+            write (*, *) "the main-diagonal must be zero!"
+            stop
+        endif
+    enddo
+    ! check symmetry
+    do i = 1, ndim
+        do j = 1, ndim
+            if(A(i, j) /= conjg(A(j, i))) then
+                write (*, *) "Non-hermitian matrix encountered!"
+                stop
+            endif
+        enddo
+    enddo
+    allocate(verts(ndim), cntarr(ndim))
+! calculate Vertex degree and determine the number of links
+    cntarr = 0
+!    nredges = 0
+    do j = 1, ndim-1
+        do i = j+1, ndim
+            if(A(i, j) /= 0.D0) then
+            cntarr(i) = cntarr(i) + 1
+            cntarr(j) = cntarr(j) + 1
+!            nredges = nredges + 1
+            endif
+        enddo
+    enddo
+    deltag = maxval(cntarr)
+    write (*,*) "Delta(G) = ", deltag
+    maxcolors = deltag + 1
+
+    do j = 1, ndim
+        call verts(j)%init(cntarr(j), maxcolors)
+        k = 1
+        do i = 1, ndim
+            if(A(i, j) /= 0.D0) then
+                verts(j)%nbrs(k) = i
+                k = k + 1
+            endif
+        enddo
+        call quicksort(verts(j)%nbrs, 1, verts(j)%degree)
+    enddo
+    deallocate(cntarr)
+
+end function
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> the Misra van-Gries graph decomposition
+!> If everything works out, the col array that each vertex has is completely set afterwards.
+!
+!> @param[in] verts our internal data structure composed of vertices.
+!--------------------------------------------------------------------
+subroutine MvG_decomp(verts)
     implicit none
     type(Vertex), allocatable, dimension(:) :: verts
-    integer, intent(in) :: maxcolors
+    integer :: maxcolors
     integer :: i, i2, j, k, availablecolor, fanlen, oldcol, ver
     integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol
     integer :: col(2)
+    maxcolors = 0
+    ! determine the maximum degree and therefore the maximum allowed colors beforehand
+    do i = 1, size(verts)
+        maxcolors = max(maxcolors, verts(i)%degree)
+    enddo
+    maxcolors = maxcolors + 1
     ! Starting Vizings algorith as outlined in https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
     ! and the help of the wikipedia page.
     do i = 1, size(verts)-1
@@ -832,8 +918,6 @@ subroutine MvG_decomp(verts, maxcolors)
         if ( verts(i)%cols(i2) == 0) then
             j = verts(i)%nbrs(i2)
         ! Edge found between vertex i and j
-        ! Let's check wether we have free edges at every vertex
-!            nredges = nredges + 1
 ! ! ! ! A debugging check that the data is consistent:
 ! ! !  check = .false.
 ! ! ! do k = 1, verts(i)%degree
@@ -843,6 +927,7 @@ subroutine MvG_decomp(verts, maxcolors)
 ! ! ! write(*,*) "inconsistent data!"
 ! ! ! STOP
 ! ! ! endif
+        ! Let's check wether we have free edges at every vertex
             availablecolor = find_and_try_to_set_common_free_color(i, j, verts, maxcolors)
             if(availablecolor == 0) then
                 ! Our starting vertex is verts(i), our target vertex is verts(j)
