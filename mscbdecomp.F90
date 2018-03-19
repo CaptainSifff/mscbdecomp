@@ -85,23 +85,19 @@ write (*,*) "created matrix with", nredges, "edges."
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
     verts = mat2verts(A)
     call MvG_decomp(verts)
+    ! Determine the number of used colors and the number of edges
+    deltag = 0
+    usedcolors = 0
     nredges = 0
-    do i = 1, ndim-1
+    do i = 1, ndim
+        deltag = max(deltag, verts(i)%degree)
         do k = 1, verts(i)%degree
             if (verts(i)%nbrs(k) > i) nredges = nredges + 1
             if (verts(i)%nbrs(k) > size(verts)) then
                 write(*,*) "invalid nbr!!!"
                 STOP
             endif
-        enddo
-    enddo
-    ! Determine the number of used colors
-    deltag = 0
-    usedcolors = 0
-    do i = 1, ndim
-        deltag = max(deltag, verts(i)%degree)
-        do j = 1, verts(i)%degree
-            usedcolors = max(usedcolors, verts(i)%cols(j))
+            usedcolors = max(usedcolors, verts(i)%cols(k))
         enddo
     enddo
     write (*,*) "Nr edges: ", nredges
