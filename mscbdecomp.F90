@@ -31,7 +31,7 @@ program mscbdecomp
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec, lwork, rwork, res, res2 !< the vector that we will test on
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
-    type(Vertex), allocatable, dimension(:) :: verts
+    type(GraphData) :: gd
     logical, allocatable, dimension(:) :: usedcols
     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
@@ -83,21 +83,21 @@ enddo
 enddo
 write (*,*) "created matrix with", nredges, "edges."
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
-    verts = mat2verts(A)
-    call MvG_decomp(verts)
+    gd = mat2verts(A)
+    call MvG_decomp(gd%verts)
     ! Determine the number of used colors and the number of edges
     deltag = 0
     usedcolors = 0
     nredges = 0
-    do i = 1, ndim
-        deltag = max(deltag, verts(i)%degree)
-        do k = 1, verts(i)%degree
-            if (verts(i)%nbrs(k) > i) nredges = nredges + 1
-            if (verts(i)%nbrs(k) > size(verts)) then
+    do i = 1, gd%ndim
+        deltag = max(deltag, gd%verts(i)%degree)
+        do k = 1, gd%verts(i)%degree
+            if (gd%verts(i)%nbrs(k) > i) nredges = nredges + 1
+            if (gd%verts(i)%nbrs(k) > gd%ndim) then
                 write(*,*) "invalid nbr!!!"
                 STOP
             endif
-            usedcolors = max(usedcolors, verts(i)%cols(k))
+            usedcolors = max(usedcolors, gd%verts(i)%cols(k))
         enddo
     enddo
     write (*,*) "Nr edges: ", nredges
@@ -112,20 +112,20 @@ allocate( nodes(nredges), usedcols(usedcolors))
     do i = 1, ndim-1
         ! check validity of the coloring locally
         usedcols = .false.
-        do l = 1, verts(i)%degree
-            if(verts(i)%cols(l) == 0) then
+        do l = 1, gd%verts(i)%degree
+            if(gd%verts(i)%cols(l) == 0) then
                 write (*,*) "forgotten edge found!"
                 STOP
             endif
-            if (usedcols(verts(i)%cols(l)) .eqv. .true. ) then
+            if (usedcols(gd%verts(i)%cols(l)) .eqv. .true. ) then
                 write (*,*) "invalid coloring!!"
                 STOP
             else
-                usedcols(verts(i)%cols(l)) = .true.
+                usedcols(gd%verts(i)%cols(l)) = .true.
             endif
         enddo
         do l = 1, usedcolors
-            nbr1 = verts(i)%nbrs(verts(i)%nbrbycol(l))
+            nbr1 = gd%verts(i)%nbrs(gd%verts(i)%nbrbycol(l))
             if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
                 k = k+1
                 nodes(k)%x = i
@@ -171,11 +171,11 @@ vec = 1.D0
 ! ! ! ! ! ! ! ! ! ! ! ! ! !    write (*,*) res2
 ! ! ! ! ! ! ! ! ! ! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
    deallocate(lwork, rwork)
-   do i = 1, size(verts)
-    call verts(i)%destruct()
+   do i = 1, gd%ndim
+    call gd%verts(i)%destruct()
    enddo
    call fe%dealloc()
-   deallocate(U, vec, energ, M1, M2, M3, verts, res2)
+   deallocate(U, vec, energ, M1, M2, M3, gd%verts, res2)
 enddo
 ! do i = 1,80
 !    M1 = 1.D0

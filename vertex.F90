@@ -22,7 +22,6 @@
 
 module vertex_mod
     implicit none
-
     !Another helper type for the cd_X path construction
     type :: Path
         integer :: avamem
@@ -70,9 +69,9 @@ module vertex_mod
     
     type :: Vertex
         integer :: degree
-        integer, allocatable, dimension(:) :: nbrs
-        integer, allocatable, dimension(:) :: cols
-        integer, allocatable, dimension(:) :: nbrbycol
+        integer, allocatable, dimension(:) :: nbrs !< the index of the neighbour in an associated array of Vertex classes
+        integer, allocatable, dimension(:) :: cols !< At initialization empty. Can be used for the colors
+        integer, allocatable, dimension(:) :: nbrbycol !< An array that holds for each color the local array position in this Vertex
     contains
         procedure :: init => vertex_init
         procedure :: destruct => vertex_destruct
@@ -84,6 +83,14 @@ module vertex_mod
         procedure :: findfreecolor => vertex_findfreecolor
         procedure :: iscolorfree => vertex_iscolorfree
     end type Vertex
+    
+    type :: GraphData
+        type(Vertex), allocatable, dimension(:) :: verts
+        complex(kind=kind(0.D0)), allocatable, dimension(:)  :: elems
+        integer :: ndim
+        integer :: nredges
+    end type GraphData
+    
 contains
 
 function vertex_iscolorfree(this, col) result(r)
@@ -520,7 +527,7 @@ end subroutine vertex_set_edge_color
 !> Florian Goth
 !
 !> @brief 
-!> Tidy up allocated space
+!> Tidy up allocated space.
 !
 !> @param[in] this The vertex that we consider
 !--------------------------------------------------------------------
@@ -538,7 +545,7 @@ end subroutine vertex_destruct
 !> This function checks wether a free color is available and returns
 !> the index of the neighbour vertex
 !
-!> @param[in] this The vertex that we consider
+!> @param[in] this The vertex that we consider.
 !> @return the index of the neighbour where the edge is still colorless
 !--------------------------------------------------------------------
 
@@ -618,6 +625,18 @@ function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
     endif
 end function find_and_try_to_set_common_free_color
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function constructs an alternating cd path at start
+!> And then inverts the colors
+!>
+!> @param[in] col the two colors that make up the path
+!> @param[inout] verts The array of vertices
+!> @param[in] startthe starting vertex
+!--------------------------------------------------------------------
 subroutine construct_and_invert_path(col, verts, start)
     type(Vertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: col(2), start
@@ -820,7 +839,6 @@ function binarySearch (a, value)
     end do
 end function binarySearch
 
-
 !--------------------------------------------------------------------
 !> @author
 !> Florian Goth
@@ -831,61 +849,66 @@ end function binarySearch
 !> @param[in] A the matrix that we bring into our internal datastructure
 !> @result our internal data structure of graph vertices
 !--------------------------------------------------------------------
-function mat2verts(A) result(verts)
+function mat2verts(A) result(gd)
     implicit none
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:), intent(in) :: A
-    type(Vertex), allocatable :: verts(:)
-    integer :: ndim, i, j, deltag, maxcolors, k
+    complex (kind=kind(0.d0)), allocatable, dimension(:) :: elems
+    type(GraphData) :: gd
+    integer :: ndim, i, j, deltag, maxcolors, k, i2
     integer, allocatable, dimension(:) :: cntarr
     
-    ndim = size(A, 1)
+    gd%ndim = size(A, 1)
     ! check input
     ! first check diagonal
-    do i = 1, ndim
+    do i = 1, gd%ndim
         if(A(i, i) /= 0.D0) then
             write (*, *) "the main-diagonal must be zero!"
             stop
         endif
     enddo
-    ! check symmetry
-    do i = 1, ndim
-        do j = 1, ndim
+    ! check symmetry of input matrix
+    do i = 1, gd%ndim
+        do j = 1, gd%ndim
             if(A(i, j) /= conjg(A(j, i))) then
                 write (*, *) "Non-hermitian matrix encountered!"
                 stop
             endif
         enddo
     enddo
-    allocate(verts(ndim), cntarr(ndim))
-! calculate Vertex degree and determine the number of links
-    cntarr = 0
-!    nredges = 0
-    do j = 1, ndim-1
-        do i = j+1, ndim
-            if(A(i, j) /= 0.D0) then
-            cntarr(i) = cntarr(i) + 1
-            cntarr(j) = cntarr(j) + 1
-!            nredges = nredges + 1
-            endif
+    allocate(gd%verts(gd%ndim), cntarr(gd%ndim))
+    associate(ndim => gd%ndim, verts => gd%verts)
+        ! calculate Vertex degree
+        cntarr = 0
+        do j = 1, ndim-1
+            do i = j+1, ndim
+                if(A(i, j) /= 0.D0) then
+                    cntarr(i) = cntarr(i) + 1
+                    cntarr(j) = cntarr(j) + 1
+                endif
+            enddo
         enddo
-    enddo
-    deltag = maxval(cntarr)
-    write (*,*) "Delta(G) = ", deltag
-    maxcolors = deltag + 1
-
-    do j = 1, ndim
-        call verts(j)%init(cntarr(j), maxcolors)
-        k = 1
-        do i = 1, ndim
-            if(A(i, j) /= 0.D0) then
-                verts(j)%nbrs(k) = i
-                k = k + 1
-            endif
+        deltag = maxval(cntarr)
+        write (*,*) "Delta(G) = ", deltag
+        maxcolors = deltag + 1
+        allocate(elems(sum(cntarr)))
+        i2 = 1
+        do j = 1, ndim
+            call verts(j)%init(cntarr(j), maxcolors)
+            k = 1
+            do i = 1, ndim
+                if(A(i, j) /= 0.D0) then
+                    verts(j)%nbrs(k) = i
+                    k = k + 1
+                endif
+            enddo
+            call quicksort(verts(j)%nbrs, 1, verts(j)%degree) !< it is probably sorted already...
+            do i = 1, verts(j)%degree ! set up array of elements
+                elems(i2) = A(verts(j)%nbrs(i), j) 
+                i2 = i2 + 1
+            enddo
         enddo
-        call quicksort(verts(j)%nbrs, 1, verts(j)%degree)
-    enddo
-    deallocate(cntarr)
-
+        deallocate(cntarr, elems)
+    end associate
 end function
 
 !--------------------------------------------------------------------
