@@ -635,9 +635,10 @@ end function find_and_try_to_set_common_free_color
 !>
 !> @param[in] col the two colors that make up the path
 !> @param[inout] verts The array of vertices
-!> @param[in] startthe starting vertex
+!> @param[in] start the starting vertex
 !--------------------------------------------------------------------
 subroutine construct_and_invert_path(col, verts, start)
+    implicit none
     type(Vertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: col(2), start
     integer :: k, nbr1, ver, colctr, curver, nbr, tmpcol
@@ -645,7 +646,7 @@ subroutine construct_and_invert_path(col, verts, start)
     Type(Path) :: p
 
 #ifndef NDEBUG
-    write (*,*) "construct path of colors", col(2), col(1), "at", i, fan(fanlen)
+    write (*,*) "construct path of colors", col(1), col(2), "at", start
 #endif
     call p%init()
     do k = 1, verts(start)%degree
