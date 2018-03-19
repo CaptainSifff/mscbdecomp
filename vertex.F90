@@ -656,7 +656,7 @@ subroutine construct_and_invert_path(col, verts, start)
     ! (i, nbr1) is the first piece of the path. nbr1 is the position within the arrays of verts(i)
     ! The edge i -> nbr1 has color col(1)
 #ifndef NDEBUG
-    write (*,*) "starting path to ", nbr1, "which is", verts(i)%nbrs(nbr1)
+    write (*,*) "starting path to ", nbr1, "which is", verts(start)%nbrs(nbr1)
 #endif
     call p%pushback(start, nbr1)
     stoppath = .false.
