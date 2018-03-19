@@ -89,6 +89,7 @@ module vertex_mod
         complex(kind=kind(0.D0)), allocatable, dimension(:)  :: elems
         integer :: ndim
         integer :: nredges
+        integer :: deltag !> the graph degree
     end type GraphData
     
 contains
@@ -853,9 +854,8 @@ end function binarySearch
 function mat2verts(A) result(gd)
     implicit none
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:), intent(in) :: A
-    complex (kind=kind(0.d0)), allocatable, dimension(:) :: elems
     type(GraphData) :: gd
-    integer :: ndim, i, j, deltag, maxcolors, k, i2
+    integer :: ndim, i, j, maxcolors, k, i2
     integer, allocatable, dimension(:) :: cntarr
     
     gd%ndim = size(A, 1)
@@ -888,10 +888,10 @@ function mat2verts(A) result(gd)
                 endif
             enddo
         enddo
-        deltag = maxval(cntarr)
-        write (*,*) "Delta(G) = ", deltag
-        maxcolors = deltag + 1
-        allocate(elems(sum(cntarr)))
+        gd%deltag = maxval(cntarr)
+        write (*,*) "Delta(G) = ", gd%deltag
+        maxcolors = gd%deltag + 1
+        allocate(gd%elems(sum(cntarr)))
         i2 = 1
         do j = 1, ndim
             call verts(j)%init(cntarr(j), maxcolors)
@@ -904,11 +904,11 @@ function mat2verts(A) result(gd)
             enddo
             call quicksort(verts(j)%nbrs, 1, verts(j)%degree) !< it is probably sorted already...
             do i = 1, verts(j)%degree ! set up array of elements
-                elems(i2) = A(verts(j)%nbrs(i), j) 
+                gd%elems(i2) = A(verts(j)%nbrs(i), j) 
                 i2 = i2 + 1
             enddo
         enddo
-        deallocate(cntarr, elems)
+        deallocate(cntarr)
     end associate
 end function
 

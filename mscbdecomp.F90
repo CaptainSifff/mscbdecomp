@@ -23,7 +23,7 @@
 program mscbdecomp
     use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, l, deltag, usedcolors
+    integer :: ndim, i, j, k, l, usedcolors, elempos, mynbr
     integer :: nredges, dn, IERR, incx, nbr1
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
@@ -86,11 +86,10 @@ write (*,*) "created matrix with", nredges, "edges."
     gd = mat2verts(A)
     call MvG_decomp(gd%verts)
     ! Determine the number of used colors and the number of edges
-    deltag = 0
     usedcolors = 0
     nredges = 0
     do i = 1, gd%ndim
-        deltag = max(deltag, gd%verts(i)%degree)
+        gd%deltag = max(gd%deltag, gd%verts(i)%degree)
         do k = 1, gd%verts(i)%degree
             if (gd%verts(i)%nbrs(k) > i) nredges = nredges + 1
             if (gd%verts(i)%nbrs(k) > gd%ndim) then
@@ -101,13 +100,14 @@ write (*,*) "created matrix with", nredges, "edges."
         enddo
     enddo
     write (*,*) "Nr edges: ", nredges
-    if (usedcolors == deltag) then
-        write(*,*) "Maximum Degree", deltag, ". Found", usedcolors," Families -> optimal decomposition"
+    if (usedcolors == gd%deltag) then
+        write(*,*) "Maximum Degree", gd%deltag, ". Found", usedcolors," Families -> optimal decomposition"
     else
-        write(*,*) "Maximum Degree", deltag, ". Found", usedcolors," Families"
+        write(*,*) "Maximum Degree", gd%deltag, ". Found", usedcolors," Families"
     endif
 ! set up data in an edges based layout
 k = 0
+elempos = 0
 allocate( nodes(nredges), usedcols(usedcolors))
     do i = 1, ndim-1
         ! check validity of the coloring locally
@@ -125,20 +125,20 @@ allocate( nodes(nredges), usedcols(usedcolors))
             endif
         enddo
         do l = 1, usedcolors
-            nbr1 = gd%verts(i)%nbrs(gd%verts(i)%nbrbycol(l))
+            mynbr = gd%verts(i)%nbrbycol(l)
+            nbr1 = gd%verts(i)%nbrs(mynbr)
             if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
                 k = k+1
                 nodes(k)%x = i
                 nodes(k)%y = nbr1
-                nodes(k)%axy = A(i, nbr1)
+                nodes(k)%axy = gd%elems(elempos + mynbr)
                 nodes(k)%col = l
             endif
         enddo
+        elempos = elempos + gd%verts(i)%degree
     enddo
-!STOP
     call fe%init(nodes, usedcolors)
     deallocate(nodes, usedcols)
-!STOP
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
 ! ! ! !     do i = 1, ndim
@@ -175,7 +175,7 @@ vec = 1.D0
     call gd%verts(i)%destruct()
    enddo
    call fe%dealloc()
-   deallocate(U, vec, energ, M1, M2, M3, gd%verts, res2)
+   deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems, res2)
 enddo
 ! do i = 1,80
 !    M1 = 1.D0
