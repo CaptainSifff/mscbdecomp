@@ -22,6 +22,8 @@
 
 program mscbdecomp
     use vertex_mod
+    use MvG_mod
+    use Exponentials_mod
     implicit none
     integer :: ndim, i, j, k, l, usedcolors, mynbr
     integer :: nredges, dn, IERR, incx, nbr1
@@ -39,14 +41,14 @@ program mscbdecomp
     integer :: seed
     complex(kind=kind(0.D0)) :: alpha, beta
     ! initialize A with some data
-    hop = 0.001
+    hop = 0.1
 ! coresponds to chain with next-nearest neighbour hopping and OBC
-! ndim = 100
-! allocate(A(ndim, ndim))
-! do I = 1, ndim-1
-! A(I,I+1) = hop
-! A(i+1, i) = hop
-! enddo
+ndim = 100
+allocate(A(ndim, ndim))
+do I = 1, ndim-1, 2
+A(I,I+1) = hop
+A(i+1, i) = hop
+enddo
 ! A(1,10) = hop
 ! A(10,1) = hop
 ! A(3,8) = hop
@@ -60,26 +62,26 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-ndim = 400
-!ndim=7
-allocate(A(ndim, ndim))
-!do seed = 1000,1010
-seed = 4887
-!seed = 1061
-write (*,*) "seed", seed
-call srand(seed)
-A=0
-nredges = 0
-do i = 1, ndim-1
-do j = i+1, ndim
-if (rand() > 0.9) then ! 0.2
-!write (*,*) i,j
-A(i,j) = hop
-A(j,i) = hop
-nredges = nredges + 1
-endif
-enddo
-enddo
+! ndim = 400
+! !ndim=7
+! allocate(A(ndim, ndim))
+! !do seed = 1000,1010
+! seed = 4887
+! !seed = 1061
+! write (*,*) "seed", seed
+! call srand(seed)
+! A=0
+! nredges = 0
+! do i = 1, ndim-1
+! do j = i+1, ndim
+! if (rand() > 0.9) then ! 0.2
+! !write (*,*) i,j
+! A(i,j) = hop
+! A(j,i) = hop
+! nredges = nredges + 1
+! endif
+! enddo
+! enddo
 write (*,*) "created matrix with", nredges, "edges."
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
     gd = mat2verts(A)
@@ -104,41 +106,6 @@ write (*,*) "created matrix with", nredges, "edges."
     else
         write(*,*) "Maximum Degree", gd%deltag, ". Found", gd%usedcolors," Families"
     endif
-! ! ! ! ! set up data in an edges based layout
-! ! ! ! k = 0
-! ! ! ! elempos = 0
-! ! ! ! allocate( nodes(nredges), usedcols(usedcolors))
-! ! ! !     do i = 1, ndim-1
-! ! ! !         ! check validity of the coloring locally
-! ! ! !         usedcols = .false.
-! ! ! !         do l = 1, gd%verts(i)%degree
-! ! ! !             if(gd%verts(i)%cols(l) == 0) then
-! ! ! !                 write (*,*) "forgotten edge found!"
-! ! ! !                 STOP
-! ! ! !             endif
-! ! ! !             if (usedcols(gd%verts(i)%cols(l)) .eqv. .true. ) then
-! ! ! !                 write (*,*) "invalid coloring!!"
-! ! ! !                 STOP
-! ! ! !             else
-! ! ! !                 usedcols(gd%verts(i)%cols(l)) = .true.
-! ! ! !             endif
-! ! ! !         enddo
-! ! ! !         do l = 1, usedcolors
-! ! ! !             mynbr = gd%verts(i)%nbrbycol(l)
-! ! ! !             nbr1 = gd%verts(i)%nbrs(mynbr)
-! ! ! !             if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
-! ! ! !                 k = k+1
-! ! ! !                 nodes(k)%x = i
-! ! ! !                 nodes(k)%y = nbr1
-! ! ! !                 nodes(k)%axy = gd%elems(elempos + mynbr)
-! ! ! !                 nodes(k)%col = l
-! ! ! !             endif
-! ! ! !         enddo
-! ! ! !         elempos = elempos + gd%verts(i)%degree
-! ! ! !     enddo
-! ! ! !     call fe%init(gd)
-! ! ! !     call fe%init(nodes, usedcolors)
-! ! ! !     deallocate(nodes, usedcols)
 fe = createFullExponentialfromGraphData(gd)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
