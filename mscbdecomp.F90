@@ -25,9 +25,9 @@ program mscbdecomp
     use MvG_mod
     use Exponentials_mod
     implicit none
-    integer :: ndim, i, j, k, l, usedcolors, mynbr
-    integer :: nredges, dn, IERR, incx, nbr1
-    real(kind=kind(0.D0)) :: hop
+    integer :: ndim, i, j, k, l, usedcolors, mynbr, n
+    integer :: nredges, dn, IERR, incx, nbr1, seed
+    real(kind=kind(0.D0)) :: hop, r
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec, lwork, rwork, res, res2 !< the vector that we will test on
@@ -36,7 +36,7 @@ program mscbdecomp
     type(GraphData) :: gd
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
-    integer :: seed
+    integer, allocatable, dimension(:) :: seedarr
     complex(kind=kind(0.D0)) :: alpha, beta
     
 ! First create some test matrix
@@ -66,17 +66,20 @@ program mscbdecomp
 
     ndim = 400
     !ndim=7
-    allocate(A(ndim, ndim))
+    call random_seed(size = n)
+    allocate(A(ndim, ndim), seedarr(n))
     do seed = 1000,10000
     !seed = 4887
     !seed = 1061
     write (*,*) "seed", seed
-    call srand(seed)
+    seedarr = seed + 37 * (/ (i-1, i=1, n) /)
+    call random_seed(put = seedarr)
     A=0
     nredges = 0
     do i = 1, ndim-1
     do j = i+1, ndim
-    if (rand() > 0.9) then ! 0.2
+    call random_number(r)
+    if (r > 0.9) then ! 0.2
     !write (*,*) i,j
     A(i,j) = hop
     A(j,i) = hop
