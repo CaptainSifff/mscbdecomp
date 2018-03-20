@@ -34,21 +34,23 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
     type(GraphData) :: gd
-! !     logical, allocatable, dimension(:) :: usedcols
-! !     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
     integer :: seed
     complex(kind=kind(0.D0)) :: alpha, beta
+    
+! First create some test matrix
+!
+
     ! initialize A with some data
     hop = 0.1
 ! coresponds to chain with next-nearest neighbour hopping and OBC
-ndim = 100
-allocate(A(ndim, ndim))
-do I = 1, ndim-1, 2
-A(I,I+1) = hop
-A(i+1, i) = hop
-enddo
+! ndim = 100
+! allocate(A(ndim, ndim))
+! do I = 1, ndim-1, 2
+! A(I,I+1) = hop
+! A(i+1, i) = hop
+! enddo
 ! A(1,10) = hop
 ! A(10,1) = hop
 ! A(3,8) = hop
@@ -62,30 +64,42 @@ enddo
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-! ndim = 400
-! !ndim=7
-! allocate(A(ndim, ndim))
-! !do seed = 1000,1010
-! seed = 4887
-! !seed = 1061
-! write (*,*) "seed", seed
-! call srand(seed)
-! A=0
-! nredges = 0
-! do i = 1, ndim-1
-! do j = i+1, ndim
-! if (rand() > 0.9) then ! 0.2
-! !write (*,*) i,j
-! A(i,j) = hop
-! A(j,i) = hop
-! nredges = nredges + 1
-! endif
-! enddo
-! enddo
-write (*,*) "created matrix with", nredges, "edges."
+    ndim = 400
+    !ndim=7
+    allocate(A(ndim, ndim))
+    do seed = 1000,10000
+    !seed = 4887
+    !seed = 1061
+    write (*,*) "seed", seed
+    call srand(seed)
+    A=0
+    nredges = 0
+    do i = 1, ndim-1
+    do j = i+1, ndim
+    if (rand() > 0.9) then ! 0.2
+    !write (*,*) i,j
+    A(i,j) = hop
+    A(j,i) = hop
+    nredges = nredges + 1
+    endif
+    enddo
+    enddo
+    write (*,*) "created matrix with", nredges, "edges."
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
+    
+! convert to the internal GraphData structure
+!
+    
     gd = mat2verts(A)
+    
+! perform the actual color decomposition
+!
+    
     call MvG_decomp(gd%verts)
+    
+! Output some useful information
+!
+    
     ! Determine the number of used colors and the number of edges
     gd%usedcolors = 0
     gd%nredges = 0
@@ -106,14 +120,15 @@ write (*,*) "created matrix with", nredges, "edges."
     else
         write(*,*) "Maximum Degree", gd%deltag, ". Found", gd%usedcolors," Families"
     endif
-fe = createFullExponentialfromGraphData(gd)
-! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
-! exponentiated variants.
-! ! ! !     do i = 1, ndim
-! ! ! !         do j = 1, verts(i)%degree
-! ! ! !         write (*,*) i, "->", verts(i)%nbrs(j), " = ", verts(i)%cols(j)
-! ! ! !         enddo
-! ! ! !     enddo
+    
+! create an Exponential from the color information and the weights of the graph
+!
+    
+    fe = createFullExponentialfromGraphData(gd)
+
+! Now follows some testing and the comparison to straight-forward exponentiation via lapack
+!
+
 vec = 1.D0
   call fe%vecmult(vec)
 !  write (*,*) vec
@@ -144,7 +159,7 @@ vec = 1.D0
    enddo
    call fe%dealloc()
    deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems, res2)
-!enddo
+enddo
 ! do i = 1,80
 !    M1 = 1.D0
 !    call fe%matmult(M1)
