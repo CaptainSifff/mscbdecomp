@@ -25,8 +25,8 @@ program mscbdecomp
     use MvG_mod
     use Exponentials_mod
     implicit none
-    integer :: ndim, i, j, k, l, usedcolors, mynbr, n
-    integer :: nredges, dn, IERR, incx, nbr1, seed
+    integer :: ndim, i, j, k, n
+    integer :: nredges, dn, IERR, incx, seed
     real(kind=kind(0.D0)) :: hop, r
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
