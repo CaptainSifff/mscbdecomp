@@ -90,6 +90,7 @@ module vertex_mod
         integer :: ndim
         integer :: nredges
         integer :: deltag !> the graph degree
+        integer :: usedcolors
     end type GraphData
     
 contains
@@ -373,6 +374,66 @@ subroutine FullExp_matmult(this, mat)
     enddo
 end subroutine FullExp_matmult
 
+function createFullExponentialfromGraphData(gd) result(fe)
+    implicit none
+    type(GraphData) :: gd
+    type(FullExp) :: fe
+    integer :: k, elempos, mynbr, nbr1, l, i
+    logical, allocatable, dimension(:) :: usedcols
+    type(node), allocatable, dimension(:) :: nodes
+    
+    if ((gd%usedcolors == 0) .or. (gd%nredges == 0)) then ! check that those are available
+        gd%usedcolors = 0
+        gd%nredges = 0
+        do i = 1, gd%ndim
+            gd%deltag = max(gd%deltag, gd%verts(i)%degree)
+            do k = 1, gd%verts(i)%degree
+                if (gd%verts(i)%nbrs(k) > i) gd%nredges = gd%nredges + 1
+                if (gd%verts(i)%nbrs(k) > gd%ndim) then
+                    write(*,*) "invalid nbr!!!"
+                    STOP
+                endif
+                gd%usedcolors = max(gd%usedcolors, gd%verts(i)%cols(k))
+            enddo
+        enddo
+    endif
+
+    ! set up data in an edges based layout
+    k = 0
+    elempos = 0
+    allocate( nodes(gd%nredges), usedcols(gd%usedcolors))
+    do i = 1, gd%ndim-1
+        ! check validity of the coloring locally
+        usedcols = .false.
+        do l = 1, gd%verts(i)%degree
+            if(gd%verts(i)%cols(l) == 0) then
+                write (*,*) "forgotten edge found!"
+                STOP
+            endif
+            if (usedcols(gd%verts(i)%cols(l)) .eqv. .true. ) then
+                write (*,*) "invalid coloring!!"
+                STOP
+            else
+                usedcols(gd%verts(i)%cols(l)) = .true.
+            endif
+        enddo
+        do l = 1, gd%usedcolors
+            mynbr = gd%verts(i)%nbrbycol(l)
+            nbr1 = gd%verts(i)%nbrs(mynbr)
+            if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
+                k = k+1
+                nodes(k)%x = i
+                nodes(k)%y = nbr1
+                nodes(k)%axy = gd%elems(elempos + mynbr)
+                nodes(k)%col = l
+            endif
+        enddo
+        elempos = elempos + gd%verts(i)%degree
+    enddo
+    call fe%init(nodes, gd%usedcolors)
+    deallocate(nodes, usedcols)
+end function
+
 subroutine FullExp_init(this, nodes, usedcolors)
     class(FullExp) :: this
     type(node), dimension(:), intent(in) :: nodes
@@ -380,7 +441,9 @@ subroutine FullExp_init(this, nodes, usedcolors)
     integer, dimension(:), allocatable :: nredges, edgectr
     integer :: i, maxedges
     type(node), dimension(:, :), allocatable :: simplenodes
+#ifndef NDEBUG
     write(*,*) "Setting up Full Checkerboard exponential."
+#endif
     ! Determine the number of matrix entries in each family
     allocate (nredges(usedcolors), edgectr(usedcolors))
     nredges = 0
@@ -855,7 +918,7 @@ function mat2verts(A) result(gd)
     implicit none
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:), intent(in) :: A
     type(GraphData) :: gd
-    integer :: ndim, i, j, maxcolors, k, i2
+    integer :: i, j, maxcolors, k, i2
     integer, allocatable, dimension(:) :: cntarr
     
     gd%ndim = size(A, 1)

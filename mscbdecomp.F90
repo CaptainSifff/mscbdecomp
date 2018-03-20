@@ -23,7 +23,7 @@
 program mscbdecomp
     use vertex_mod
     implicit none
-    integer :: ndim, i, j, k, l, usedcolors, elempos, mynbr
+    integer :: ndim, i, j, k, l, usedcolors, mynbr
     integer :: nredges, dn, IERR, incx, nbr1
     real(kind=kind(0.D0)) :: hop
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
@@ -32,17 +32,16 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
     
     type(GraphData) :: gd
-    logical, allocatable, dimension(:) :: usedcols
-    type(node), allocatable, dimension(:) :: nodes
+! !     logical, allocatable, dimension(:) :: usedcols
+! !     type(node), allocatable, dimension(:) :: nodes
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
     integer :: seed
     complex(kind=kind(0.D0)) :: alpha, beta
     ! initialize A with some data
-    hop = 0.01
-    nredges = 0
+    hop = 0.001
 ! coresponds to chain with next-nearest neighbour hopping and OBC
-! ndim = 10
+! ndim = 100
 ! allocate(A(ndim, ndim))
 ! do I = 1, ndim-1
 ! A(I,I+1) = hop
@@ -64,8 +63,8 @@ program mscbdecomp
 ndim = 400
 !ndim=7
 allocate(A(ndim, ndim))
-do seed = 1000,1010
-!seed = 4887
+!do seed = 1000,1010
+seed = 4887
 !seed = 1061
 write (*,*) "seed", seed
 call srand(seed)
@@ -73,7 +72,7 @@ A=0
 nredges = 0
 do i = 1, ndim-1
 do j = i+1, ndim
-if (rand() > 0.6) then ! 0.2
+if (rand() > 0.9) then ! 0.2
 !write (*,*) i,j
 A(i,j) = hop
 A(j,i) = hop
@@ -86,59 +85,61 @@ write (*,*) "created matrix with", nredges, "edges."
     gd = mat2verts(A)
     call MvG_decomp(gd%verts)
     ! Determine the number of used colors and the number of edges
-    usedcolors = 0
-    nredges = 0
+    gd%usedcolors = 0
+    gd%nredges = 0
     do i = 1, gd%ndim
         gd%deltag = max(gd%deltag, gd%verts(i)%degree)
         do k = 1, gd%verts(i)%degree
-            if (gd%verts(i)%nbrs(k) > i) nredges = nredges + 1
+            if (gd%verts(i)%nbrs(k) > i) gd%nredges = gd%nredges + 1
             if (gd%verts(i)%nbrs(k) > gd%ndim) then
                 write(*,*) "invalid nbr!!!"
                 STOP
             endif
-            usedcolors = max(usedcolors, gd%verts(i)%cols(k))
+            gd%usedcolors = max(gd%usedcolors, gd%verts(i)%cols(k))
         enddo
     enddo
-    write (*,*) "Nr edges: ", nredges
-    if (usedcolors == gd%deltag) then
-        write(*,*) "Maximum Degree", gd%deltag, ". Found", usedcolors," Families -> optimal decomposition"
+    write (*,*) "Nr edges: ", gd%nredges
+    if (gd%usedcolors == gd%deltag) then
+        write(*,*) "Maximum Degree", gd%deltag, ". Found", gd%usedcolors," Families -> optimal decomposition"
     else
-        write(*,*) "Maximum Degree", gd%deltag, ". Found", usedcolors," Families"
+        write(*,*) "Maximum Degree", gd%deltag, ". Found", gd%usedcolors," Families"
     endif
-! set up data in an edges based layout
-k = 0
-elempos = 0
-allocate( nodes(nredges), usedcols(usedcolors))
-    do i = 1, ndim-1
-        ! check validity of the coloring locally
-        usedcols = .false.
-        do l = 1, gd%verts(i)%degree
-            if(gd%verts(i)%cols(l) == 0) then
-                write (*,*) "forgotten edge found!"
-                STOP
-            endif
-            if (usedcols(gd%verts(i)%cols(l)) .eqv. .true. ) then
-                write (*,*) "invalid coloring!!"
-                STOP
-            else
-                usedcols(gd%verts(i)%cols(l)) = .true.
-            endif
-        enddo
-        do l = 1, usedcolors
-            mynbr = gd%verts(i)%nbrbycol(l)
-            nbr1 = gd%verts(i)%nbrs(mynbr)
-            if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
-                k = k+1
-                nodes(k)%x = i
-                nodes(k)%y = nbr1
-                nodes(k)%axy = gd%elems(elempos + mynbr)
-                nodes(k)%col = l
-            endif
-        enddo
-        elempos = elempos + gd%verts(i)%degree
-    enddo
-    call fe%init(nodes, usedcolors)
-    deallocate(nodes, usedcols)
+! ! ! ! ! set up data in an edges based layout
+! ! ! ! k = 0
+! ! ! ! elempos = 0
+! ! ! ! allocate( nodes(nredges), usedcols(usedcolors))
+! ! ! !     do i = 1, ndim-1
+! ! ! !         ! check validity of the coloring locally
+! ! ! !         usedcols = .false.
+! ! ! !         do l = 1, gd%verts(i)%degree
+! ! ! !             if(gd%verts(i)%cols(l) == 0) then
+! ! ! !                 write (*,*) "forgotten edge found!"
+! ! ! !                 STOP
+! ! ! !             endif
+! ! ! !             if (usedcols(gd%verts(i)%cols(l)) .eqv. .true. ) then
+! ! ! !                 write (*,*) "invalid coloring!!"
+! ! ! !                 STOP
+! ! ! !             else
+! ! ! !                 usedcols(gd%verts(i)%cols(l)) = .true.
+! ! ! !             endif
+! ! ! !         enddo
+! ! ! !         do l = 1, usedcolors
+! ! ! !             mynbr = gd%verts(i)%nbrbycol(l)
+! ! ! !             nbr1 = gd%verts(i)%nbrs(mynbr)
+! ! ! !             if (nbr1 > i) then ! nbr1 could be zero if there is no such edge
+! ! ! !                 k = k+1
+! ! ! !                 nodes(k)%x = i
+! ! ! !                 nodes(k)%y = nbr1
+! ! ! !                 nodes(k)%axy = gd%elems(elempos + mynbr)
+! ! ! !                 nodes(k)%col = l
+! ! ! !             endif
+! ! ! !         enddo
+! ! ! !         elempos = elempos + gd%verts(i)%degree
+! ! ! !     enddo
+! ! ! !     call fe%init(gd)
+! ! ! !     call fe%init(nodes, usedcolors)
+! ! ! !     deallocate(nodes, usedcols)
+fe = createFullExponentialfromGraphData(gd)
 ! Now we have to return the decomposed matrices/or setup objects for multiplication with the 
 ! exponentiated variants.
 ! ! ! !     do i = 1, ndim
@@ -154,29 +155,29 @@ vec = 1.D0
   vec = 1
   dn = 3*ndim
  allocate(lwork(dn), rwork(dn), res2(ndim))
-! ! ! ! ! ! ! ! ! ! ! ! !    U = A
-! ! ! ! ! ! ! ! ! ! ! ! !    call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
-! ! ! ! ! ! ! ! ! ! ! ! !    energ = exp(energ)
-! ! ! ! ! ! ! ! ! ! ! ! !    ! apply to vec
-! ! ! ! ! ! ! ! ! ! ! ! !    alpha = 1.D0
-! ! ! ! ! ! ! ! ! ! ! ! !    beta = 0.D0
-! ! ! ! ! ! ! ! ! ! ! ! !    incx = 1
-! ! ! ! ! ! ! ! ! ! ! ! !    call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
-! ! ! ! ! ! ! ! ! ! ! ! !    do i = 1, ndim
-! ! ! ! ! ! ! ! ! ! ! ! !         res2(i) = res2(i) * energ(i)
-! ! ! ! ! ! ! ! ! ! ! ! !    enddo
-! ! ! ! ! ! ! ! ! ! ! ! !    call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
-! ! ! ! ! ! ! ! ! ! ! ! ! !   write(*, *) vec
-! ! ! ! ! ! ! ! ! ! ! ! !    res2 = res-vec
-! ! ! ! ! ! ! ! ! ! ! ! ! !    write (*,*) res2
-! ! ! ! ! ! ! ! ! ! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+   U = A
+   call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
+   energ = exp(energ)
+   ! apply to vec
+   alpha = 1.D0
+   beta = 0.D0
+   incx = 1
+   call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
+   do i = 1, ndim
+        res2(i) = res2(i) * energ(i)
+   enddo
+   call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
+!   write(*, *) vec
+   res2 = res-vec
+!    write (*,*) res2
+   write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
    deallocate(lwork, rwork)
    do i = 1, gd%ndim
     call gd%verts(i)%destruct()
    enddo
    call fe%dealloc()
    deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems, res2)
-enddo
+!enddo
 ! do i = 1,80
 !    M1 = 1.D0
 !    call fe%matmult(M1)
