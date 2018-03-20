@@ -20,6 +20,9 @@ https://thorehusfeldt.files.wordpress.com/2010/08/gca.pdf
 
 https://en.wikipedia.org/wiki/Misra_%26_Gries_edge_coloring_algorithm
 
+Here's the original paper on the algorithm:
+http://www.cs.utexas.edu/users/misra/psp.dir/vizing.pdf
+
 It features an implementation of the Misra-van-Gries Edge coloring algorithm.
 Stuff that can also be found is a path structure that mimics the basic behaviour of 
 the C++ vector (de to a lack of templates only for two integers.)
