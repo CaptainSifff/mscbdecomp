@@ -151,10 +151,10 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol
         if (col /= 0) then
             ! col is now a small color that is free at f(fanlen)
             ! determine incident edge that has exactly this color
-            fannbr(fanlen+1) = this%nbrbycol(col)
-            fanedgecol(fanlen+1) = col
-            f(fanlen+1) = this%nbrs(this%nbrbycol(col))
             fanlen = fanlen + 1
+            fannbr(fanlen) = this%nbrbycol(col)
+            fanedgecol(fanlen) = col
+            f(fanlen) = this%nbrs(this%nbrbycol(col))
             usedcols(col) = .true.
             ! let's see wether we can stop the fan construction since we find matching colors
             rescol = 0
@@ -163,7 +163,9 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol
             enddo
         else
             ! force termination of fan construction
+#ifndef NDEBUG
             write (*,*) "fan construction stops. No color available that has NOT been already used in the fan."
+#endif
             ctr = this%degree
         endif
         ctr = ctr + 1
