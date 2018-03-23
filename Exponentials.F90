@@ -107,7 +107,9 @@ subroutine SingleColExp_init(this, nodes, nredges)
     integer :: i
     allocate(this%nodes(nredges))
     this%nrofentries = nredges
+#ifndef NDEBUG
     write(*,*) "Setting up strict. sparse matrix with ", nredges, "edges"
+#endif
     do i = 1, nredges
         this%nodes(i)%x = nodes(i)%x
         this%nodes(i)%y = nodes(i)%y
