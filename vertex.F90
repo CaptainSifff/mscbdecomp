@@ -252,9 +252,8 @@ subroutine colorvertex_init(this, deg, maxcols)
     class(ColorVertex) :: this
     integer, intent(in) :: deg
     integer :: maxcols
-!    call this%
-    this%degree = deg
-    allocate(this%nbrs(deg), this%cols(deg), this%nbrbycol(maxcols))
+    call vertex_init(this, deg)
+    allocate(this%cols(deg), this%nbrbycol(maxcols))
     this%cols = 0
     this%nbrbycol = 0
 end subroutine colorvertex_init
@@ -276,8 +275,9 @@ end subroutine vertex_destruct
 
 subroutine colorvertex_destruct(this)
     class(ColorVertex) :: this
-
-    deallocate(this%nbrs, this%cols, this%nbrbycol)
+    
+    call vertex_destruct(this)
+    deallocate(this%cols, this%nbrbycol)
 end subroutine colorvertex_destruct
 
 !--------------------------------------------------------------------
