@@ -21,7 +21,7 @@
 ! DEALINGS IN THE SOFTWARE.
 
 module MvG_mod
-    Use vertex_mod
+    Use colorvertex_mod
     implicit none
     !Another helper type for the cd_X path construction
     type :: Path
