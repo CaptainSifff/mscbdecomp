@@ -32,13 +32,13 @@ program mscbdecomp
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: U, M1,M2, M3 !< A temporary matrix
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:) :: vec, lwork, rwork, res, res2 !< the vector that we will test on
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
-    
+
     type(GraphData) :: gd
     type(FullExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
     integer, allocatable, dimension(:) :: seedarr
     complex(kind=kind(0.D0)) :: alpha, beta
-    
+
 ! First create some test matrix
 !
 
@@ -64,11 +64,11 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-    ndim = 400
+    ndim = 4000
     !ndim=7
     call random_seed(size = n)
     allocate(A(ndim, ndim), seedarr(n))
-    do seed = 1000,10000
+    do seed = 1002,1010
     !seed = 4887
     !seed = 1061
     write (*,*) "seed", seed
@@ -79,7 +79,7 @@ program mscbdecomp
     do i = 1, ndim-1
     do j = i+1, ndim
     call random_number(r)
-    if (r > 0.9) then ! 0.2
+    if (r > 0.7) then ! 0.2
     !write (*,*) i,j
     A(i,j) = hop
     A(j,i) = hop
@@ -133,35 +133,35 @@ program mscbdecomp
 !
 
 vec = 1.D0
-  call fe%vecmult(vec)
-!  write (*,*) vec
-!  write(*,*) "generating comparison data"
-  res = vec
-  vec = 1
-  dn = 3*ndim
- allocate(lwork(dn), rwork(dn), res2(ndim))
-   U = A
-   call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
-   energ = exp(energ)
-   ! apply to vec
-   alpha = 1.D0
-   beta = 0.D0
-   incx = 1
-   call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
-   do i = 1, ndim
-        res2(i) = res2(i) * energ(i)
-   enddo
-   call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
-!   write(*, *) vec
-   res2 = res-vec
-!    write (*,*) res2
-   write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
-   deallocate(lwork, rwork)
+! ! ! !   call fe%vecmult(vec)
+! ! ! ! !  write (*,*) vec
+! ! ! ! !  write(*,*) "generating comparison data"
+! ! ! !   res = vec
+! ! ! !   vec = 1
+! ! ! !   dn = 3*ndim
+! ! ! !  allocate(lwork(dn), rwork(dn), res2(ndim))
+! ! ! !    U = A
+! ! ! !    call zheev('V', 'U', ndim, U, ndim, energ, lwork, dn, rwork, IERR)
+! ! ! !    energ = exp(energ)
+! ! ! !    ! apply to vec
+! ! ! !    alpha = 1.D0
+! ! ! !    beta = 0.D0
+! ! ! !    incx = 1
+! ! ! !    call ZGEMV('C', ndim, ndim, alpha, U, ndim, vec, incx, beta, res2, incx)
+! ! ! !    do i = 1, ndim
+! ! ! !         res2(i) = res2(i) * energ(i)
+! ! ! !    enddo
+! ! ! !    call ZGEMV('N', ndim, ndim, alpha, U, ndim, res2, incx, beta, vec, incx)
+! ! ! ! !   write(*, *) vec
+! ! ! !    res2 = res-vec
+! ! ! ! !    write (*,*) res2
+! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
+! ! ! !    deallocate(lwork, rwork, res2)
    do i = 1, gd%ndim
     call gd%verts(i)%destruct()
    enddo
    call fe%dealloc()
-   deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems, res2)
+   deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems)
 enddo
 ! do i = 1,80
 !    M1 = 1.D0

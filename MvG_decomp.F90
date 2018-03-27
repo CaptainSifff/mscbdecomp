@@ -113,7 +113,7 @@ end function
 !--------------------------------------------------------------------
 function find_common_free_color(v, w, maxcols) result(col)
     implicit none
-    class(vertex), intent(in) :: v, w
+    class(ColorVertex), intent(in) :: v, w
     integer, intent(in) :: maxcols
     integer :: col, i
 
@@ -144,15 +144,44 @@ end function find_common_free_color
 !--------------------------------------------------------------------
 function find_and_try_to_set_common_free_color(i, j, verts, maxcols) result(col)
     implicit none
-    type(vertex), dimension(:), allocatable, intent(inout) :: verts
+    type(ColorVertex), dimension(:), allocatable, intent(inout) :: verts
     integer, intent(in) :: maxcols, i, j
-    integer :: col, k, l
+    integer :: col, k, l, pos, kf, ko
 
     col = 0
     k = 1
+!     if (Modulo(maxcols, 2) == 0) then
+!         pos = -1
+!         do while ((pos < 0) .and. (k <= maxcols))
+! !            write (*,*) "k = ", k, pos, verts(i)%nbrbycol(k), verts(j)%nbrbycol(k)
+!             if ((verts(i)%nbrbycol(k) == 0) .and. (verts(j)%nbrbycol(k) == 0)) then
+!             pos = 0
+!             else
+!             k = k + 1
+!             endif
+!         !    if ((verts(i)%nbrbycol(k+1) == 0) .and. (verts(j)%nbrbycol(k+1) == 0)) pos = 1
+! !        write (*,*) "k = ", k, pos
+!         enddo
+!         k = k + pos
+!         kf = k
+! !        write (*,*) "kf = ", k, pos, verts(i)%nbrbycol(k), verts(j)%nbrbycol(k)
+!         
+!        k = 1 
+!     do while (.not.((verts(i)%nbrbycol(k) == 0) .and. (verts(j)%nbrbycol(k) == 0)) .and. k <= maxcols)
+! !    write (*,*) "k = ", k, verts(i)%nbrbycol(k), verts(j)%nbrbycol(k)
+!         k = k + 1
+!     enddo
+!     ko = k
+! !    write (*,*) "ko = ", k, pos, verts(i)%nbrbycol(k), verts(j)%nbrbycol(k)
+!     if (kf .ne. ko) then
+!     write (*,*) kf, ko, maxcols
+!     endif
+! !STOP
+!     else
     do while (.not.((verts(i)%nbrbycol(k) == 0) .and. (verts(j)%nbrbycol(k) == 0)) .and. k <= maxcols)
         k = k + 1
     enddo
+!     endif
     if (k <= maxcols) then
         col = k
         l = binarysearch(verts(i)%nbrs, j)
@@ -178,7 +207,7 @@ end function find_and_try_to_set_common_free_color
 !--------------------------------------------------------------------
 subroutine construct_and_invert_path(col, verts, start)
     implicit none
-    type(Vertex), allocatable, dimension(:) :: verts
+    type(ColorVertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: col(2), start
     integer :: k, nbr1, ver, colctr, curver, nbr, tmpcol
     logical :: stoppath
@@ -269,7 +298,7 @@ end subroutine
 !--------------------------------------------------------------------
 subroutine downshift_fan_and_set_color(fanpos, fan, fannbr, fanedgecol, tail, col, verts)
     integer, allocatable, dimension(:), intent(in) :: fan, fannbr, fanedgecol
-    type(Vertex), allocatable, dimension(:) :: verts
+    type(ColorVertex), allocatable, dimension(:) :: verts
     integer, intent(in) :: tail, fanpos, col
     integer :: k, oldpos
 
@@ -354,7 +383,7 @@ end function binarySearch
 !--------------------------------------------------------------------
 subroutine MvG_decomp(verts)
     implicit none
-    type(Vertex), allocatable, dimension(:) :: verts
+    type(ColorVertex), allocatable, dimension(:) :: verts
     integer :: maxcolors
     integer :: i, i2, j, k, availablecolor, fanlen, oldcol, ver
     integer, allocatable, dimension(:) :: fan, fannbr, fanedgecol

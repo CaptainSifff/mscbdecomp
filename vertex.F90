@@ -27,22 +27,30 @@ module vertex_mod
     type :: Vertex
         integer :: degree
         integer, allocatable, dimension(:) :: nbrs !< the index of the neighbour in an associated array of Vertex classes
+    contains
+        procedure :: vertex_init
+        generic :: init => vertex_init
+        procedure :: destruct => vertex_destruct
+    end type Vertex
+    
+    type, extends(Vertex) :: ColorVertex
         integer, allocatable, dimension(:) :: cols !< At initialization empty. Can be used for the colors
         integer, allocatable, dimension(:) :: nbrbycol !< An array that holds for each color the local array position in this Vertex
     contains
-        procedure :: init => vertex_init
-        procedure :: destruct => vertex_destruct
-        procedure :: any_color_available => vertex_any_color_available
-        procedure :: erase_edge_color => vertex_erase_edge_color
-        procedure :: set_edge_color => vertex_set_edge_color
-        procedure :: get_edge_color => vertex_get_edge_color
-        procedure :: find_maximal_fan => vertex_find_maximal_fan
-        procedure :: findfreecolor => vertex_findfreecolor
-        procedure :: iscolorfree => vertex_iscolorfree
-    end type Vertex
+        procedure :: colorvertex_init
+        generic :: init => colorvertex_init
+        procedure :: destruct => colorvertex_destruct
+        procedure :: any_color_available => colorvertex_any_color_available
+        procedure :: erase_edge_color => colorvertex_erase_edge_color
+        procedure :: set_edge_color => colorvertex_set_edge_color
+        procedure :: get_edge_color => colorvertex_get_edge_color
+        procedure :: find_maximal_fan => colorvertex_find_maximal_fan
+        procedure :: findfreecolor => colorvertex_findfreecolor
+        procedure :: iscolorfree => colorvertex_iscolorfree
+    end type ColorVertex
     
     type :: GraphData
-        type(Vertex), allocatable, dimension(:) :: verts
+        type(ColorVertex), allocatable, dimension(:) :: verts
         complex(kind=kind(0.D0)), allocatable, dimension(:)  :: elems
         integer :: ndim
         integer :: nredges
@@ -52,8 +60,8 @@ module vertex_mod
     
 contains
 
-function vertex_iscolorfree(this, col) result(r)
-    class(Vertex) :: this
+function colorvertex_iscolorfree(this, col) result(r)
+    class(ColorVertex) :: this
     integer, intent(in) :: col
     logical :: r
     integer :: k
@@ -70,8 +78,8 @@ function vertex_iscolorfree(this, col) result(r)
     enddo
 end function
 
-function vertex_findfreecolor(this)  result(col)
-    class(Vertex) :: this
+function colorvertex_findfreecolor(this)  result(col)
+    class(ColorVertex) :: this
     integer :: col
     integer :: i
     logical :: usedcols(size(this%nbrbycol))
@@ -87,7 +95,7 @@ function vertex_findfreecolor(this)  result(col)
     do i = size(this%nbrbycol), 1, -1
         if(usedcols(i) .eqv. .false.) col = i
     enddo
-end function vertex_findfreecolor
+end function colorvertex_findfreecolor
 
 !--------------------------------------------------------------------
 !> @author
@@ -105,9 +113,9 @@ end function vertex_findfreecolor
 !> @param[out] fanlen The length of the entire fan
 !> @result rescol
 !--------------------------------------------------------------------
-function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol, fanlen) result(rescol)
-    class(Vertex) :: this
-    type(Vertex), dimension(:), intent(in) :: verts
+function colorvertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol, fanlen) result(rescol)
+    class(ColorVertex) :: this
+    type(ColorVertex), dimension(:), intent(in) :: verts
     integer, intent(out) :: fanlen
     integer :: rescol 
     integer, dimension(:), intent(out) :: f, fannbr, fanedgecol
@@ -171,7 +179,7 @@ function vertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, fanedgecol
         ctr = ctr + 1
     enddo
     deallocate(usedcols, freecols)
-end function vertex_find_maximal_fan
+end function colorvertex_find_maximal_fan
 
 function createFullExponentialfromGraphData(gd) result(fe)
     implicit none
@@ -233,15 +241,44 @@ function createFullExponentialfromGraphData(gd) result(fe)
     deallocate(nodes, usedcols)
 end function
 
-subroutine vertex_init(this, deg, maxcols)
+subroutine vertex_init(this, deg)
     class(vertex) :: this
     integer, intent(in) :: deg
+    this%degree = deg
+    allocate(this%nbrs(deg))
+end subroutine vertex_init
+
+subroutine colorvertex_init(this, deg, maxcols)
+    class(ColorVertex) :: this
+    integer, intent(in) :: deg
     integer :: maxcols
+!    call this%
     this%degree = deg
     allocate(this%nbrs(deg), this%cols(deg), this%nbrbycol(maxcols))
     this%cols = 0
     this%nbrbycol = 0
-end subroutine vertex_init
+end subroutine colorvertex_init
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> Tidy up allocated space.
+!
+!> @param[in] this The vertex that we consider
+!--------------------------------------------------------------------
+subroutine vertex_destruct(this)
+    class(vertex) :: this
+
+    deallocate(this%nbrs)
+end subroutine vertex_destruct
+
+subroutine colorvertex_destruct(this)
+    class(ColorVertex) :: this
+
+    deallocate(this%nbrs, this%cols, this%nbrbycol)
+end subroutine colorvertex_destruct
 
 !--------------------------------------------------------------------
 !> @author
@@ -254,8 +291,8 @@ end subroutine vertex_init
 !> @param[in] vert the index of the neighbour
 !> @param[in] col the value of the color
 !--------------------------------------------------------------------
-function vertex_get_edge_color(this, vert) result(col)
-    class(vertex) :: this
+function colorvertex_get_edge_color(this, vert) result(col)
+    class(ColorVertex) :: this
     integer, intent(in) :: vert
     integer :: col
     integer :: i
@@ -264,7 +301,7 @@ function vertex_get_edge_color(this, vert) result(col)
     do i = 1, this%degree
         if(this%nbrs(i) == vert) col = this%cols(i)
     enddo
-end function vertex_get_edge_color
+end function colorvertex_get_edge_color
 
 !--------------------------------------------------------------------
 !> @author
@@ -277,8 +314,8 @@ end function vertex_get_edge_color
 !> @param[in] vert the index of the neighbour
 !> @param[in] col the value of the color
 !--------------------------------------------------------------------
-subroutine vertex_erase_edge_color(this, vert)
-    class(vertex) :: this
+subroutine colorvertex_erase_edge_color(this, vert)
+    class(ColorVertex) :: this
     integer, intent(in) :: vert
     integer :: i, tmp
 #ifndef NDEBUG
@@ -307,7 +344,7 @@ subroutine vertex_erase_edge_color(this, vert)
     endif
     enddo
 #endif
-end subroutine vertex_erase_edge_color
+end subroutine colorvertex_erase_edge_color
 
 !--------------------------------------------------------------------
 !> @author
@@ -320,8 +357,8 @@ end subroutine vertex_erase_edge_color
 !> @param[in] vert the index of the neighbour
 !> @param[in] col the value of the color
 !--------------------------------------------------------------------
-subroutine vertex_set_edge_color(this, vert, col)
-    class(vertex) :: this
+subroutine colorvertex_set_edge_color(this, vert, col)
+    class(ColorVertex) :: this
     integer, intent(in) :: vert, col
     integer :: i, up
     
@@ -348,22 +385,7 @@ subroutine vertex_set_edge_color(this, vert, col)
 !     endif
 !     enddo
 ! #endif
-end subroutine vertex_set_edge_color
-
-!--------------------------------------------------------------------
-!> @author
-!> Florian Goth
-!
-!> @brief 
-!> Tidy up allocated space.
-!
-!> @param[in] this The vertex that we consider
-!--------------------------------------------------------------------
-subroutine vertex_destruct(this)
-    class(vertex) :: this
-
-    deallocate(this%nbrs, this%cols, this%nbrbycol)
-end subroutine vertex_destruct
+end subroutine colorvertex_set_edge_color
 
 !--------------------------------------------------------------------
 !> @author
@@ -377,15 +399,15 @@ end subroutine vertex_destruct
 !> @return the index of the neighbour where the edge is still colorless
 !--------------------------------------------------------------------
 
-function vertex_any_color_available(this) result(n)
-    class(vertex), intent(in) :: this
+function colorvertex_any_color_available(this) result(n)
+    class(ColorVertex), intent(in) :: this
     integer :: n, i
 
     n = 0
     do i = this%degree, 1, -1
         if (this%cols(i) == 0) n = this%nbrs(i)
     enddo
-end function vertex_any_color_available
+end function colorvertex_any_color_available
 
 !--------------------------------------------------------------------
 !> @author
