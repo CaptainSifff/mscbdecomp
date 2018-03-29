@@ -29,8 +29,8 @@ module colorvertex_mod
         integer, allocatable, dimension(:) :: cols !< At initialization empty. Can be used for the colors
         integer, allocatable, dimension(:) :: nbrbycol !< An array that holds for each color the local array position in this Vertex
     contains
-        procedure :: colorvertex_init
-        generic :: init => colorvertex_init
+        procedure, pass(this) :: colorvertex_init
+        generic, public :: init => colorvertex_init
         procedure :: destruct => colorvertex_destruct
         procedure :: any_color_available => colorvertex_any_color_available
         procedure :: erase_edge_color => colorvertex_erase_edge_color
@@ -234,9 +234,9 @@ function createFullExponentialfromGraphData(gd) result(fe)
 end function
 
 subroutine colorvertex_init(this, deg, maxcols)
-    class(ColorVertex) :: this
-    integer, intent(in) :: deg
-    integer :: maxcols
+    class(ColorVertex), intent(inout) :: this
+    integer, intent(in) :: deg, maxcols
+
     call vertex_init(this, deg)
     allocate(this%cols(deg), this%nbrbycol(maxcols))
     this%cols = 0

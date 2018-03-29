@@ -27,15 +27,15 @@ module vertex_mod
         integer :: degree
         integer, allocatable, dimension(:) :: nbrs !< the index of the neighbour in an associated array of Vertex classes
     contains
-        procedure :: vertex_init
-        generic :: init => vertex_init
+        procedure, pass(this) :: vertex_init
+        generic, public :: init => vertex_init
         procedure :: destruct => vertex_destruct
     end type Vertex
 
 contains
 
 subroutine vertex_init(this, deg)
-    class(vertex) :: this
+    class(vertex), intent(inout) :: this
     integer, intent(in) :: deg
     this%degree = deg
     allocate(this%nbrs(deg))
