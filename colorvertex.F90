@@ -437,7 +437,6 @@ end subroutine quicksort
 !> @result our internal data structure of graph vertices
 !--------------------------------------------------------------------
 function mat2verts(A) result(gd)
-    use vertex_mod
     implicit none
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:), intent(in) :: A
     type(GraphData) :: gd
@@ -480,8 +479,8 @@ function mat2verts(A) result(gd)
         allocate(gd%elems(sum(cntarr)))
         i2 = 1
         do j = 1, ndim
-!            call colorvertex_init(gd%verts(j), cntarr(j), maxcolors)
-            call gd%verts(j)%init(cntarr(j), maxcolors)
+            call colorvertex_init(gd%verts(j), cntarr(j), maxcolors)
+!            call gd%verts(j)%init(cntarr(j), maxcolors)
             k = 1
             do i = 1, ndim
                 if(A(i, j) /= 0.D0) then
