@@ -480,8 +480,8 @@ function mat2verts(A) result(gd)
         allocate(gd%elems(sum(cntarr)))
         i2 = 1
         do j = 1, ndim
-            call colorvertex_init(gd%verts(j), cntarr(j), maxcolors)
-!            call gd%verts(j)%init(cntarr(j), maxcolors)
+!            call colorvertex_init(gd%verts(j), cntarr(j), maxcolors)
+            call gd%verts(j)%init(cntarr(j), maxcolors)
             k = 1
             do i = 1, ndim
                 if(A(i, j) /= 0.D0) then
