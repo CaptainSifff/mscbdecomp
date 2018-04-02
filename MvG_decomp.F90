@@ -61,8 +61,8 @@ subroutine Path_pushback(this, vert, nbridx)
     if (this%tail == this%avamem) then
         ! reallocate the memory
         write (*,*) "not enough space!"
-        call MOVE_ALLOC(temp1, this%vertices)
-        call MOVE_ALLOC(temp2, this%nbrindex)
+        call MOVE_ALLOC(this%vertices, temp1)
+        call MOVE_ALLOC(this%nbrindex, temp2)
         allocate(this%vertices(2*this%avamem), this%nbrindex(2*this%avamem))
         do i = 1, this%avamem
             this%vertices(i) = temp1(i)
@@ -70,7 +70,6 @@ subroutine Path_pushback(this, vert, nbridx)
         enddo
         deallocate(temp1, temp2)
         this%avamem = 2*this%avamem
-        STOP
     endif
     this%vertices(this%tail) = vert
     this%nbrindex(this%tail) = nbridx
