@@ -188,7 +188,9 @@ end function colorvertex_find_maximal_fan
 !> Florian Goth
 !
 !> @brief 
-!> 
+!> This function takes a graphdata object as e.g. determined with the
+!> help of the MvG_decomp function and creates a FullExp(=product 
+!> of checkerboard exponentials) object from it.
 !
 !> @param gd
 !> @result fe

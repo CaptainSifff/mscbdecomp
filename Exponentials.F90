@@ -43,6 +43,17 @@ module Exponentials_mod
         procedure :: matmult => SingleColExp_matmult
     end type
 
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This holds together a set of exponentials that, if applied in the
+!> correct order approximate e^A.
+!> It provides functions for matrix-matrix and matrix-vector
+!>  multiplications.
+!--------------------------------------------------------------------
     type :: FullExp
         integer :: nrofcols
         type(SingleColExp), dimension(:), allocatable :: singleexps
@@ -100,6 +111,18 @@ subroutine SingleColExp_matmult(this, mat)
     enddo
 end subroutine SingleColExp_matmult
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This sets up the data to perform the exponentiation of a 
+!> strictly sparse matrix.
+!
+!> @param[inout] this the SingleColExp object.
+!> @param[in] nodes The nodes that belng to this color.
+!> @param[in] nredges how many nodes of this color.
+!--------------------------------------------------------------------
 subroutine SingleColExp_init(this, nodes, nredges)
     class(SingleColExp) :: this
     type(node), dimension(:), intent(in) :: nodes
@@ -159,6 +182,18 @@ subroutine FullExp_matmult(this, mat)
     enddo
 end subroutine FullExp_matmult
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function creates an exponential object from an array of nodes.
+!
+!> @param this The exponential opbject
+!> @param[in] nodes The array of nodes
+!> @param[in] usedcolors the number of used colors/terms in 
+!>                       the decomposition.
+!--------------------------------------------------------------------
 subroutine FullExp_init(this, nodes, usedcolors)
     class(FullExp) :: this
     type(node), dimension(:), intent(in) :: nodes
@@ -186,6 +221,9 @@ subroutine FullExp_init(this, nodes, usedcolors)
 !     do i = 1, usedcolors
 !     write (*,*) edgectr(i), nredges(i)
 !     enddo
+    ! Now that we have properly separated which entry of a matrix belongs to
+    ! which color we can create an exponential for each color that exploits
+    ! the structure that the color decomposition creates strictly sparse matrices.
     allocate(this%singleexps(usedcolors))
     do i = 1, usedcolors
         call this%singleexps(i)%init(simplenodes(i, :), nredges(i))
