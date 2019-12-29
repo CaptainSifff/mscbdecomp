@@ -1,5 +1,10 @@
 This is a project to get a working implementation of the minimum split checkerboard decomposition by
 Che-Rung Lee in SIAM Vol 35, No 2, pp. C143-C171
+# AUTHOR #
+Florian Goth, Universität Würzburg, SFB1170, Projekt Z03
+
+# LICENSE #
+MIT License, see LICENSE file.
 
 # PREREQUISITES #
 A fortran 2003 compatible compiler.
@@ -25,5 +30,5 @@ http://www.cs.utexas.edu/users/misra/psp.dir/vizing.pdf
 
 It features an implementation of the Misra-van-Gries Edge coloring algorithm.
 Stuff that can also be found is a path structure that mimics the basic behaviour of 
-the C++ vector (de to a lack of templates only for two integers.)
+the C++ vector (due to a lack of templates only for two integers.)
 as well as a quicksort on integers and a binary search on integers.
