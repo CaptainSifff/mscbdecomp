@@ -200,7 +200,7 @@ subroutine FullExp_init(this, nodes, usedcolors)
     integer, intent(in) :: usedcolors
     integer, dimension(:), allocatable :: nredges, edgectr
     integer :: i, maxedges
-    type(node), dimension(:, :), allocatable :: simplenodes
+    type(node), dimension(:, :), allocatable :: colsepnodes! An array of nodes separated by color
 #ifndef NDEBUG
     write(*,*) "Setting up Full Checkerboard exponential."
 #endif
@@ -213,9 +213,9 @@ subroutine FullExp_init(this, nodes, usedcolors)
     enddo
     maxedges = maxval(nredges)
     edgectr = 1
-    allocate(simplenodes(usedcolors, maxedges))
+    allocate(colsepnodes(usedcolors, maxedges))
     do i = 1, size(nodes)
-        simplenodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
+        colsepnodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
         edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
     enddo
 !     do i = 1, usedcolors
@@ -226,9 +226,9 @@ subroutine FullExp_init(this, nodes, usedcolors)
     ! the structure that the color decomposition creates strictly sparse matrices.
     allocate(this%singleexps(usedcolors))
     do i = 1, usedcolors
-        call this%singleexps(i)%init(simplenodes(i, :), nredges(i))
+        call this%singleexps(i)%init(colsepnodes(i, :), nredges(i))
     enddo
-    deallocate(simplenodes)
+    deallocate(colsepnodes)
     deallocate(nredges, edgectr)
 end subroutine FullExp_init
 
