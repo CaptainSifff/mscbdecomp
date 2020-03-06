@@ -1,6 +1,6 @@
 ! MIT License
 ! 
-! Copyright (c) 2018 Florian Goth
+! Copyright (c) 2018-2020 Florian Goth
 !
 ! Permission is hereby granted, free of charge, to any person obtaining a copy
 ! of this software and associated documentation files (the "Software"), to deal
@@ -40,16 +40,26 @@ module colorvertex_mod
         procedure :: findfreecolor => colorvertex_findfreecolor
         procedure :: iscolorfree => colorvertex_iscolorfree
     end type ColorVertex
-    
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This type is used to store the information contained in a symmetric
+!> matrix in terms of the associated graph. The information about the
+!> connectivity is stored in the vert array. The actual elements
+!> are stored in the elems array.
+!--------------------------------------------------------------------
     type :: GraphData
-        type(ColorVertex), allocatable, dimension(:) :: verts
-        complex(kind=kind(0.D0)), allocatable, dimension(:)  :: elems
-        integer :: ndim
-        integer :: nredges
-        integer :: deltag !> the graph degree
-        integer :: usedcolors
+        type(ColorVertex), allocatable, dimension(:) :: verts !< An array with all vertices. Each vertex knows the index of its neighbours in this array.
+        complex(kind=kind(0.D0)), allocatable, dimension(:)  :: elems !< The actual weight of the connection that was stored in the matrix.
+        integer :: ndim !< corresponds to the number of columns/rows of the associated matrix. Hence this is the number of vertices.
+        integer :: nredges !< The number of edges in the graph.
+        integer :: deltag !< the graph degree. It is determined by the vertex that has the most connections.
+        integer :: usedcolors !< the number of colors that would be used in this graph decomposition.
     end type GraphData
-    
+
 contains
 
 function colorvertex_iscolorfree(this, col) result(r)
@@ -172,6 +182,19 @@ function colorvertex_find_maximal_fan(this, verts, v0, maxcols, f, fannbr, faned
     enddo
     deallocate(usedcols, freecols)
 end function colorvertex_find_maximal_fan
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function takes a graphdata object as e.g. determined with the
+!> help of the MvG_decomp function and creates a FullExp(=product 
+!> of checkerboard exponentials) object from it.
+!
+!> @param gd
+!> @result fe
+!--------------------------------------------------------------------
 
 function createFullExponentialfromGraphData(gd) result(fe)
     implicit none
@@ -463,7 +486,7 @@ function mat2verts(A) result(gd)
     enddo
     allocate(gd%verts(gd%ndim), cntarr(gd%ndim))
     associate(ndim => gd%ndim, verts => gd%verts)
-        ! calculate Vertex degree
+        ! calculate Vertex degree of each vertex
         cntarr = 0
         do j = 1, ndim-1
             do i = j+1, ndim

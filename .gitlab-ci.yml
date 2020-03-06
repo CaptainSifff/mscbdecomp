@@ -12,28 +12,24 @@ stages:
     - cmake -F "Unix Makefiles" ..
     - make
 
-mscbdecomp_Wheezy:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-gfortran-blas-lapack
-  <<: *build_definition
-
 mscbdecomp_Jessie:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-gfortran-blas-lapack
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:jessie-gfortran-blas-lapack
   <<: *build_definition
 
+mscbdecomp_Buster:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-blas-lapack
+  <<: *build_definition
+  
 mscbdecomp_Stretch:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-stretch-gfortran-blas-lapack
-  <<: *build_definition
-
-mscbdecomp_Wheezy_OpenBlas:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-wheezy-gfortran-openblas-lapack
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:stretch-gfortran-blas-lapack
   <<: *build_definition
 
 mscbdecomp_Jessie_OpenBlas:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-jessie-gfortran-openblas-lapack
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:jessie-gfortran-openblas-lapack
   <<: *build_definition
 
 mscbdecomp_Stretch_OpenBlas:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:debian-stretch-gfortran-openblas-lapack
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:stretch-gfortran-openblas-lapack
   <<: *build_definition
 
 mscbdecomp_CentOS:
@@ -60,7 +56,7 @@ mscbdecomp_Stretch_PGI1710:
     - cmake --build . --target mscbdecomp --config Release
 
 mscbdecomp_Ubuntu_Trusty:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:trusty-gfortran-lapack
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:trusty-tahr-gfortran-lapack
   <<: *build_definition
 
 mscbdecomp_Ubuntu_Xenial:
