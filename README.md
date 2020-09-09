@@ -20,6 +20,13 @@ A standard Desktop System with a fortran 2003 compatible compiler.
 
 # USAGE #
 
+If you want to use this library/set of routines, start in mscbdecomp.f90.
+We provide the mat2vert function that takes a Fortran matrix and converts it to
+our internal graph structure. The you can apply MvG_decomp which applies the 
+Misra - van Gries algorithm to decompose the matrix.
+If you want to use our helper Exponential Objects you can create them
+via a call to createFullExponentialfromGraphData()
+
 # TODO DOC #
 
 # TODO CODE #
