@@ -7,6 +7,7 @@ Stated more precisely given a sparse matrix M the MSCBD will find an exact decom
 ![equation](https://latex.codecogs.com/gif.latex?M%20%3D%5Csum_i%5EN%20M_i%20%5C%5C%20%5Ctext%7Bsuch%20that%20%7D%20e%5E%7B%5Cdelta%20t%20M%7D%20%3D%20%5Cprod_i%5EN%20e%5E%7B%5Cdelta%20t%20M_i%7D%20&plus;%20%5Cmathcal%7BO%7D%28%5Cdelta%20t%5E2%29)
 
 The number of families N depends on the sparsity of M. The decisive property is that the exponentials can now be exactly evaluated in linear time.
+With the help of splitting methods even higher order approximations can be built as outlined in the appendix of [arXiv:2009.04491](https://arxiv.org/abs/2009.04491)
 
 ## AUTHOR
 Florian Goth, Universität Würzburg, SFB1170, Projekt Z03
