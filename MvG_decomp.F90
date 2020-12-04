@@ -26,7 +26,7 @@ module MvG_mod
     !Another helper type for the cd_X path construction
     type :: Path
         integer :: avamem
-        integer :: tail
+        integer :: tail ! Last valid Fortran index
         integer, allocatable, dimension(:) :: vertices
         integer, allocatable, dimension(:) :: nbrindex
     contains
@@ -43,7 +43,7 @@ contains
 subroutine Path_init(this)
     class(Path) :: this
     integer :: temp
-    this%tail = 1
+    this%tail = 0 ! when the vector is empty, this is invalid memory
     this%avamem = 4096/SIZEOF(temp) ! allocate a page of memory
     allocate(this%vertices(this%avamem), this%nbrindex(this%avamem))
 end subroutine Path_init
@@ -71,9 +71,9 @@ subroutine Path_pushback(this, vert, nbridx)
         deallocate(temp1, temp2)
         this%avamem = 2*this%avamem
     endif
+    this%tail = this%tail + 1
     this%vertices(this%tail) = vert
     this%nbrindex(this%tail) = nbridx
-    this%tail = this%tail + 1
 end subroutine
 
 subroutine Path_at(this, pos, vert, nbridx)
@@ -87,14 +87,14 @@ end subroutine
 subroutine Path_back(this, vert, nbridx)
     class(Path) :: this
     integer, intent(out) :: vert, nbridx
-    vert = this%vertices(this%tail-1)
-    nbridx = this%nbrindex(this%tail-1)
+    vert = this%vertices(this%tail)
+    nbridx = this%nbrindex(this%tail)
 end subroutine
 
 function Path_length(this) result(l)
     class(Path) :: this
     integer :: l
-    l = this%tail-1
+    l = this%tail
 end function 
 
 !--------------------------------------------------------------------
