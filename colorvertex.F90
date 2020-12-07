@@ -200,6 +200,7 @@ function createFullExponentialfromGraphData(gd) result(fe)
     implicit none
     type(GraphData) :: gd
     type(FullExp) :: fe
+    complex(kind=kind(0.D0)) :: weight
     integer :: k, elempos, mynbr, nbr1, l, i
     logical, allocatable, dimension(:) :: usedcols
     type(node), allocatable, dimension(:) :: nodes
@@ -252,7 +253,8 @@ function createFullExponentialfromGraphData(gd) result(fe)
         enddo
         elempos = elempos + gd%verts(i)%degree
     enddo
-    call fe%init(nodes, gd%usedcolors)
+    weight = 1.0
+    call fe%init(nodes, gd%usedcolors, weight)
     deallocate(nodes, usedcols)
 end function
 
