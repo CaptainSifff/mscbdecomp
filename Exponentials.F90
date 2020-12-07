@@ -1,6 +1,6 @@
 ! MIT License
 ! 
-! Copyright (c) 2018 Florian Goth
+! Copyright (c) 2018-2020 Florian Goth
 !
 ! Permission is hereby granted, free of charge, to any person obtaining a copy
 ! of this software and associated documentation files (the "Software"), to deal
@@ -43,20 +43,33 @@ module Exponentials_mod
         procedure :: matmult => SingleColExp_matmult
     end type
 
-
+    
 !--------------------------------------------------------------------
 !> @author
 !> Florian Goth
 !
 !> @brief 
 !> This holds together a set of exponentials that, if applied in the
-!> correct order approximate e^A.
+!> correct order approximate e^A to first order.
 !> It provides functions for matrix-matrix and matrix-vector
 !>  multiplications in transposed and non-transposed manner.
 !--------------------------------------------------------------------
-    type :: FullExp
+    type :: EulerExp
         integer :: nrofcols
         type(SingleColExp), dimension(:), allocatable :: singleexps
+    contains
+        procedure :: init => EulerExp_init
+        procedure :: dealloc => EulerExp_dealloc
+        procedure :: vecmult => EulerExp_vecmult
+        procedure :: vecmult_T => EulerExp_vecmult_T
+        procedure :: matmult => EulerExp_matmult
+        procedure :: matmult_T => EulerExp_matmult_T
+    end type EulerExp
+    
+    type :: FullExp
+        integer :: method
+        integer :: evals
+        type(EulerExp), allocatable :: stages
     contains
         procedure :: init => FullExp_init
         procedure :: dealloc => FullExp_dealloc
@@ -67,6 +80,121 @@ module Exponentials_mod
     end type FullExp
     
 contains
+
+subroutine FullExp_init(this, nodes, usedcolors, method, weight)
+    class(FullExp) :: this
+    type(node), dimension(:), intent(in) :: nodes
+    integer, intent(in) :: usedcolors, method
+    complex (kind=kind(0.d0)), intent(in) :: weight
+    complex (kind=kind(0.d0)), intent(in) :: tmp
+    integer, dimension(:), allocatable :: nredges, edgectr
+    integer :: i, maxedges, k
+    type(node), dimension(:, :), allocatable :: colsepnodes! An array of nodes separated by color
+    character(len=64) :: filename
+#ifndef NDEBUG
+    write(*,*) "Setting up Full Checkerboard exponential."
+#endif
+    select case (method)
+        case (1)! Euler
+            evals = 1
+            allocate(stages(evals))
+            call stages(1)%init(nodes, usedcolors, weight)
+        case (2)! Strang
+            evals = 2
+            allocate(stages(evals))
+            tmp = 1.D0/2.D0*weight
+            call stages(1)%init(nodes, usedcolors, tmp)
+            call stages(2)%init(nodes, usedcolors, tmp)
+        case (3)! SE_2 2
+            evals = 4
+            allocate(stages(evals))
+            tmp = 0.21178*weight
+            call stages(1)%init(nodes, usedcolors, tmp)
+            tmp = 0.28822*weight
+            call stages(2)%init(nodes, usedcolors, tmp)
+            tmp = 0.28822*weight
+            call stages(3)%init(nodes, usedcolors, tmp)
+            tmp = 0.21178*weight
+            call stages(4)%init(nodes, usedcolors, tmp)
+        case (4)! SE_3 4, Yoshida, Neri
+            evals = 6
+            allocate(stages(evals))
+            tmp = 0.675604*weight
+            call stages(1)%init(nodes, usedcolors, tmp)
+            tmp = 0.675604*weight
+            call stages(2)%init(nodes, usedcolors, tmp)
+            tmp = -0.851207*weight
+            call stages(3)%init(nodes, usedcolors, tmp)
+            tmp = -0.851207*weight
+            call stages(4)%init(nodes, usedcolors, tmp)
+            tmp = 0.675604*weight
+            call stages(5)%init(nodes, usedcolors, tmp)
+            tmp = 0.675604*weight
+            call stages(6)%init(nodes, usedcolors, tmp)
+        case (5)! SE_6 4, Blanes
+            evals = 12
+            allocate(stages(evals))
+            tmp = 0.0792037*weight
+            call stages(1)%init(nodes, usedcolors, tmp)
+            tmp = 0.130311*weight
+            call stages(2)%init(nodes, usedcolors, tmp)
+            tmp = 0.222861*weight
+            call stages(3)%init(nodes, usedcolors, tmp)
+            tmp = -0.366713*weight
+            call stages(4)%init(nodes, usedcolors, tmp)
+            tmp = 0.324648*weight
+            call stages(5)%init(nodes, usedcolors, tmp)
+            tmp = 0.109688*weight
+            call stages(6)%init(nodes, usedcolors, tmp)
+            tmp = 0.109688*weight
+            call stages(7)%init(nodes, usedcolors, tmp)
+            tmp = 0.324648*weight
+            call stages(8)%init(nodes, usedcolors, tmp)
+            tmp = -0.366713*weight
+            call stages(9)%init(nodes, usedcolors, tmp)
+            tmp = 0.222861*weight
+            call stages(10)%init(nodes, usedcolors, tmp)
+            tmp = 0.130311*weight
+            call stages(11)%init(nodes, usedcolors, tmp)
+            tmp = 0.0792037*weight
+            call stages(12)%init(nodes, usedcolors, tmp)
+    end select
+
+
+    ! Determine the number of matrix entries in each family
+    allocate (nredges(usedcolors), edgectr(usedcolors))
+    nredges = 0
+    this%nrofcols = usedcolors
+    do i = 1, size(nodes)
+        nredges(nodes(i)%col) = nredges(nodes(i)%col) + 1
+    enddo
+    maxedges = maxval(nredges)
+    edgectr = 1
+    allocate(colsepnodes(usedcolors, maxedges))
+    do i = 1, size(nodes)
+        colsepnodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
+        edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
+    enddo
+! ! !     do i = 1, usedcolors
+! ! !     write (filename, "(A6,I3)") "matrix", i
+! ! !     open(unit=5,file=filename)
+! ! !     do k = 1, nredges(i)
+! ! !     write (5, *) colsepnodes(i, k)%x, colsepnodes(i, k)%y, dble(colsepnodes(i, k)%axy)
+! ! !     enddo
+! ! !     enddo
+! ! ! !     do i = 1, usedcolors
+! ! ! !     write (*,*) edgectr(i), nredges(i)
+! ! ! !     enddo
+    ! Now that we have properly separated which entry of a matrix belongs to
+    ! which color we can create an exponential for each color that exploits
+    ! the structure that the color decomposition creates strictly sparse matrices.
+    allocate(this%singleexps(usedcolors))
+    do i = 1, usedcolors
+        call this%singleexps(i)%init(colsepnodes(i, :), nredges(i), weight)
+    enddo
+    deallocate(colsepnodes)
+    deallocate(nredges, edgectr)
+end subroutine FullExp_init
 
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
@@ -153,10 +281,10 @@ subroutine SingleColExp_dealloc(this)
     deallocate(this%nodes)
 end subroutine SingleColExp_dealloc
 
-subroutine FullExp_dealloc(this)
-    class(FullExp) :: this
+subroutine EulerExp_dealloc(this)
+    class(EulerExp) :: this
     deallocate(this%singleexps)
-end subroutine FullExp_dealloc
+end subroutine EulerExp_dealloc
 
 !--------------------------------------------------------------------
 !> @author
@@ -168,41 +296,41 @@ end subroutine FullExp_dealloc
 !> @param[in] this The exponential opbject
 !> @param[in] vec The vector that we multiply
 !--------------------------------------------------------------------
-subroutine FullExp_vecmult(this, vec)
-    class(FullExp) :: this
+subroutine EulerExp_vecmult(this, vec)
+    class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
     do i = 1, this%nrofcols
         call this%singleexps(i)%vecmult(vec)
     enddo
-end subroutine FullExp_vecmult
+end subroutine EulerExp_vecmult
 
-subroutine FullExp_vecmult_T(this, vec)
-    class(FullExp) :: this
+subroutine EulerExp_vecmult_T(this, vec)
+    class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
     do i = this%nrofcols, 1, -1
         call this%singleexps(i)%vecmult(vec)
     enddo
-end subroutine FullExp_vecmult_T
+end subroutine EulerExp_vecmult_T
 
-subroutine FullExp_matmult(this, mat)
-    class(FullExp) :: this
+subroutine EulerExp_matmult(this, mat)
+    class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
     integer :: i
     do i = 1, this%nrofcols
         call this%singleexps(i)%matmult(mat)
     enddo
-end subroutine FullExp_matmult
+end subroutine EulerExp_matmult
 
-subroutine FullExp_matmult_T(this, mat)
-    class(FullExp) :: this
+subroutine EulerExp_matmult_T(this, mat)
+    class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
     integer :: i
     do i = this%nrofcols, 1, -1
         call this%singleexps(i)%matmult(mat)
     enddo
-end subroutine FullExp_matmult_T
+end subroutine EulerExp_matmult_T
 
 !--------------------------------------------------------------------
 !> @author
@@ -217,15 +345,15 @@ end subroutine FullExp_matmult_T
 !>                       the decomposition.
 !> @param[in] weight a prefactor of the exponent
 !--------------------------------------------------------------------
-subroutine FullExp_init(this, nodes, usedcolors, weight)
-    class(FullExp) :: this
+subroutine EulerExp_init(this, nodes, usedcolors, weight)
+    class(EulerExp) :: this
     type(node), dimension(:), intent(in) :: nodes
     integer, intent(in) :: usedcolors
     complex (kind=kind(0.d0)), intent(in) :: weight
     integer, dimension(:), allocatable :: nredges, edgectr
     integer :: i, maxedges, k
     type(node), dimension(:, :), allocatable :: colsepnodes! An array of nodes separated by color
-
+    character(len=64) :: filename
 #ifndef NDEBUG
     write(*,*) "Setting up Full Checkerboard exponential."
 #endif
@@ -243,7 +371,16 @@ subroutine FullExp_init(this, nodes, usedcolors, weight)
         colsepnodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
         edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
     enddo
-
+    do i = 1, usedcolors
+    write (filename, "(A6,I3)") "matrix", i
+    open(unit=5,file=filename)
+    do k = 1, nredges(i)
+    write (5, *) colsepnodes(i, k)%x, colsepnodes(i, k)%y, dble(colsepnodes(i, k)%axy)
+    enddo
+    enddo
+!     do i = 1, usedcolors
+!     write (*,*) edgectr(i), nredges(i)
+!     enddo
     ! Now that we have properly separated which entry of a matrix belongs to
     ! which color we can create an exponential for each color that exploits
     ! the structure that the color decomposition creates strictly sparse matrices.
@@ -253,6 +390,6 @@ subroutine FullExp_init(this, nodes, usedcolors, weight)
     enddo
     deallocate(colsepnodes)
     deallocate(nredges, edgectr)
-end subroutine FullExp_init
+end subroutine EulerExp_init
 
 end module Exponentials_mod
