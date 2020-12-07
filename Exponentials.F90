@@ -196,6 +196,15 @@ subroutine FullExp_init(this, nodes, usedcolors, method, weight)
     deallocate(nredges, edgectr)
 end subroutine FullExp_init
 
+subroutine FullExp_dealloc(this)
+    class(FullExp), intent(int) :: this
+    integer :: i
+    do i = 1, this%evals
+        call this%stages(i)
+    enddo
+    deallocate(this%stages)
+end subroutine EulerExp_dealloc
+
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
