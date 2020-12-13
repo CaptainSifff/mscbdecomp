@@ -172,6 +172,53 @@ subroutine FullExp_dealloc(this)
     deallocate(this%stages)
 end subroutine FullExp_dealloc
 
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This function multiplies this full exponential with a vector
+!
+!> @param[in] this The exponential opbject
+!> @param[in] vec The vector that we multiply
+!--------------------------------------------------------------------
+subroutine FullExp_vecmult(this, vec)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:) :: vec
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%vecmult(vec)
+    enddo
+end subroutine FullExp_vecmult
+
+subroutine FullExp_vecmult_T(this, vec)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:) :: vec
+    integer :: i
+    do i = this%nrofcols, 1, -1
+        call this%singleexps(i)%vecmult(vec)
+    enddo
+end subroutine FullExp_vecmult_T
+
+subroutine FullExp_matmult(this, mat)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%matmult(mat)
+    enddo
+end subroutine FullExp_matmult
+
+subroutine FullExp_matmult_T(this, mat)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = this%nrofcols, 1, -1
+        call this%singleexps(i)%matmult(mat)
+    enddo
+end subroutine FullExp_matmult_T
+
+
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
