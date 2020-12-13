@@ -69,7 +69,7 @@ module Exponentials_mod
     type :: FullExp
         integer :: method
         integer :: evals
-        type(EulerExp), allocatable :: stages
+        type(EulerExp), allocatable :: stages(:)
     contains
         procedure :: init => FullExp_init
         procedure :: dealloc => FullExp_dealloc
@@ -86,124 +86,91 @@ subroutine FullExp_init(this, nodes, usedcolors, method, weight)
     type(node), dimension(:), intent(in) :: nodes
     integer, intent(in) :: usedcolors, method
     complex (kind=kind(0.d0)), intent(in) :: weight
-    complex (kind=kind(0.d0)), intent(in) :: tmp
+    complex (kind=kind(0.d0)) :: tmp
     integer, dimension(:), allocatable :: nredges, edgectr
     integer :: i, maxedges, k
     type(node), dimension(:, :), allocatable :: colsepnodes! An array of nodes separated by color
     character(len=64) :: filename
+    type(EulerExp) :: dummy
+    
 #ifndef NDEBUG
     write(*,*) "Setting up Full Checkerboard exponential."
 #endif
     select case (method)
         case (1)! Euler
-            evals = 1
-            allocate(stages(evals))
-            call stages(1)%init(nodes, usedcolors, weight)
+            this%evals = 1
+            allocate(this%stages(this%evals))
+            call this%stages(1)%init(nodes, usedcolors, weight)
         case (2)! Strang
-            evals = 2
-            allocate(stages(evals))
+            this%evals = 2
+            allocate(this%stages(this%evals))
             tmp = 1.D0/2.D0*weight
-            call stages(1)%init(nodes, usedcolors, tmp)
-            call stages(2)%init(nodes, usedcolors, tmp)
+            call this%stages(1)%init(nodes, usedcolors, tmp)
+            call this%stages(2)%init(nodes, usedcolors, tmp)
         case (3)! SE_2 2
-            evals = 4
-            allocate(stages(evals))
+            this%evals = 4
+            allocate(this%stages(this%evals))
             tmp = 0.21178*weight
-            call stages(1)%init(nodes, usedcolors, tmp)
+            call this%stages(1)%init(nodes, usedcolors, tmp)
             tmp = 0.28822*weight
-            call stages(2)%init(nodes, usedcolors, tmp)
+            call this%stages(2)%init(nodes, usedcolors, tmp)
             tmp = 0.28822*weight
-            call stages(3)%init(nodes, usedcolors, tmp)
+            call this%stages(3)%init(nodes, usedcolors, tmp)
             tmp = 0.21178*weight
-            call stages(4)%init(nodes, usedcolors, tmp)
+            call this%stages(4)%init(nodes, usedcolors, tmp)
         case (4)! SE_3 4, Yoshida, Neri
-            evals = 6
-            allocate(stages(evals))
+            this%evals = 6
+            allocate(this%stages(this%evals))
             tmp = 0.675604*weight
-            call stages(1)%init(nodes, usedcolors, tmp)
+            call this%stages(1)%init(nodes, usedcolors, tmp)
             tmp = 0.675604*weight
-            call stages(2)%init(nodes, usedcolors, tmp)
+            call this%stages(2)%init(nodes, usedcolors, tmp)
             tmp = -0.851207*weight
-            call stages(3)%init(nodes, usedcolors, tmp)
+            call this%stages(3)%init(nodes, usedcolors, tmp)
             tmp = -0.851207*weight
-            call stages(4)%init(nodes, usedcolors, tmp)
+            call this%stages(4)%init(nodes, usedcolors, tmp)
             tmp = 0.675604*weight
-            call stages(5)%init(nodes, usedcolors, tmp)
+            call this%stages(5)%init(nodes, usedcolors, tmp)
             tmp = 0.675604*weight
-            call stages(6)%init(nodes, usedcolors, tmp)
+            call this%stages(6)%init(nodes, usedcolors, tmp)
         case (5)! SE_6 4, Blanes
-            evals = 12
-            allocate(stages(evals))
+            this%evals = 12
+            allocate(this%stages(this%evals))
             tmp = 0.0792037*weight
-            call stages(1)%init(nodes, usedcolors, tmp)
+            call this%stages(1)%init(nodes, usedcolors, tmp)
             tmp = 0.130311*weight
-            call stages(2)%init(nodes, usedcolors, tmp)
+            call this%stages(2)%init(nodes, usedcolors, tmp)
             tmp = 0.222861*weight
-            call stages(3)%init(nodes, usedcolors, tmp)
+            call this%stages(3)%init(nodes, usedcolors, tmp)
             tmp = -0.366713*weight
-            call stages(4)%init(nodes, usedcolors, tmp)
+            call this%stages(4)%init(nodes, usedcolors, tmp)
             tmp = 0.324648*weight
-            call stages(5)%init(nodes, usedcolors, tmp)
+            call this%stages(5)%init(nodes, usedcolors, tmp)
             tmp = 0.109688*weight
-            call stages(6)%init(nodes, usedcolors, tmp)
+            call this%stages(6)%init(nodes, usedcolors, tmp)
             tmp = 0.109688*weight
-            call stages(7)%init(nodes, usedcolors, tmp)
+            call this%stages(7)%init(nodes, usedcolors, tmp)
             tmp = 0.324648*weight
-            call stages(8)%init(nodes, usedcolors, tmp)
+            call this%stages(8)%init(nodes, usedcolors, tmp)
             tmp = -0.366713*weight
-            call stages(9)%init(nodes, usedcolors, tmp)
+            call this%stages(9)%init(nodes, usedcolors, tmp)
             tmp = 0.222861*weight
-            call stages(10)%init(nodes, usedcolors, tmp)
+            call this%stages(10)%init(nodes, usedcolors, tmp)
             tmp = 0.130311*weight
-            call stages(11)%init(nodes, usedcolors, tmp)
+            call this%stages(11)%init(nodes, usedcolors, tmp)
             tmp = 0.0792037*weight
-            call stages(12)%init(nodes, usedcolors, tmp)
+            call this%stages(12)%init(nodes, usedcolors, tmp)
     end select
-
-
-    ! Determine the number of matrix entries in each family
-    allocate (nredges(usedcolors), edgectr(usedcolors))
-    nredges = 0
-    this%nrofcols = usedcolors
-    do i = 1, size(nodes)
-        nredges(nodes(i)%col) = nredges(nodes(i)%col) + 1
-    enddo
-    maxedges = maxval(nredges)
-    edgectr = 1
-    allocate(colsepnodes(usedcolors, maxedges))
-    do i = 1, size(nodes)
-        colsepnodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
-        edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
-    enddo
-! ! !     do i = 1, usedcolors
-! ! !     write (filename, "(A6,I3)") "matrix", i
-! ! !     open(unit=5,file=filename)
-! ! !     do k = 1, nredges(i)
-! ! !     write (5, *) colsepnodes(i, k)%x, colsepnodes(i, k)%y, dble(colsepnodes(i, k)%axy)
-! ! !     enddo
-! ! !     enddo
-! ! ! !     do i = 1, usedcolors
-! ! ! !     write (*,*) edgectr(i), nredges(i)
-! ! ! !     enddo
-    ! Now that we have properly separated which entry of a matrix belongs to
-    ! which color we can create an exponential for each color that exploits
-    ! the structure that the color decomposition creates strictly sparse matrices.
-    allocate(this%singleexps(usedcolors))
-    do i = 1, usedcolors
-        call this%singleexps(i)%init(colsepnodes(i, :), nredges(i), weight)
-    enddo
-    deallocate(colsepnodes)
-    deallocate(nredges, edgectr)
 end subroutine FullExp_init
 
 subroutine FullExp_dealloc(this)
-    class(FullExp), intent(int) :: this
+    class(FullExp) :: this
     integer :: i
     do i = 1, this%evals
-        call this%stages(i)
+        call this%stages(i)%dealloc()
     enddo
     deallocate(this%stages)
-end subroutine EulerExp_dealloc
+end subroutine FullExp_dealloc
 
 subroutine SingleColExp_vecmult(this, vec)
     class(SingleColExp) :: this
@@ -364,7 +331,7 @@ subroutine EulerExp_init(this, nodes, usedcolors, weight)
     type(node), dimension(:, :), allocatable :: colsepnodes! An array of nodes separated by color
     character(len=64) :: filename
 #ifndef NDEBUG
-    write(*,*) "Setting up Full Checkerboard exponential."
+    write(*,*) "Setting up Euler Checkerboard exponential."
 #endif
     ! Determine the number of matrix entries in each family
     allocate (nredges(usedcolors), edgectr(usedcolors))
