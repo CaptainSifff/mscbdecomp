@@ -153,7 +153,7 @@ enddo
 ! create an Exponential from the color information and the weights of the graph
 !
     
-    fe = createFullExponentialfromGraphData(gd)
+    fe = createEulerExponentialfromGraphData(gd)
 
 ! Now follows some testing and the comparison to straight-forward exponentiation via lapack
 !
