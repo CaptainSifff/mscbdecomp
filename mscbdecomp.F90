@@ -1,6 +1,6 @@
 ! MIT License
 ! 
-! Copyright (c) 2018 Florian Goth
+! Copyright (c) 2018-2020 Florian Goth
 !
 ! Permission is hereby granted, free of charge, to any person obtaining a copy
 ! of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,10 @@
 ! DEALINGS IN THE SOFTWARE.
 
 program mscbdecomp
-    use vertex_mod
     use MvG_mod
     use Exponentials_mod
     implicit none
-    integer :: ndim, i, j, k, n
+    integer :: ndim, i, j, k, n, myl
     integer :: nredges, dn, IERR, incx, seed
     real(kind=kind(0.D0)) :: hop, r
     complex (kind=kind(0.d0)), ALLOCATABLE, DIMENSION(:,:) :: A !< the full matrix A
@@ -34,7 +33,7 @@ program mscbdecomp
     real(kind=kind(0.D0)), allocatable, dimension(:) :: energ
 
     type(GraphData) :: gd
-    type(FullExp) :: fe
+    type(EulerExp) :: fe
     real(kind=kind(0.D0)) :: dznrm2, zlange
     integer, allocatable, dimension(:) :: seedarr
     complex(kind=kind(0.D0)) :: alpha, beta
@@ -45,12 +44,14 @@ program mscbdecomp
     ! initialize A with some data
     hop = 0.1
 ! coresponds to chain with next-nearest neighbour hopping and OBC
-! ndim = 100
-! allocate(A(ndim, ndim))
-! do I = 1, ndim-1, 2
-! A(I,I+1) = hop
-! A(i+1, i) = hop
-! enddo
+!  ndim = 50
+!  allocate(A(ndim, ndim))
+!  do I = 1, ndim-1, 1
+!  A(I,I+1) = hop
+!  A(i+1, i) = hop
+! ! A(I,I+2) = hop
+! ! A(i+2, i) = hop
+!  enddo
 ! A(1,10) = hop
 ! A(10,1) = hop
 ! A(3,8) = hop
@@ -64,30 +65,55 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-    ndim = 4000
-    !ndim=7
-    call random_seed(size = n)
-    allocate(A(ndim, ndim), seedarr(n))
-    do seed = 1002,1010
-    !seed = 4887
-    !seed = 1061
-    write (*,*) "seed", seed
-    seedarr = seed + 37 * (/ (i-1, i=1, n) /)
-    call random_seed(put = seedarr)
-    A=0
-    nredges = 0
-    do i = 1, ndim-1
-    do j = i+1, ndim
-    call random_number(r)
-    if (r > 0.7) then ! 0.2
-    !write (*,*) i,j
-    A(i,j) = hop
-    A(j,i) = hop
-    nredges = nredges + 1
-    endif
-    enddo
-    enddo
-    write (*,*) "created matrix with", nredges, "edges."
+    myl = 5
+ndim = myl*myl
+allocate(A(ndim, ndim))
+A = 0
+do i = 1, ndim
+if((mod(i + 1,myl) .ne. 0) .and. (i + 1 < ndim) ) then
+A(i,i+1) = 1
+A(i+1,i) = 1
+endif
+if((mod(i - 1,myl) .ne. 0) .and. (i-1 > 0) ) then
+A(i,i-1) = 1
+A(i-1,i) = 1
+endif
+if((i + myl < ndim) ) then
+A(i,i + myl) = 1
+A(i + myl,i) = 1
+endif
+if((i - myl > 0) ) then
+A(i,i - myl) = 1
+A(i - myl,i) = 1
+endif
+enddo
+
+
+!    ndim = 100
+!     !ndim=7
+!     call random_seed(size = n)
+!     allocate(A(ndim, ndim), seedarr(n))
+! !    do seed = 1002,1010
+! !    seed = 0
+!     !seed = 1061
+!     seed = 99
+! !    write (*,*) "seed", seed
+!     seedarr = seed + 37 * (/ (i-1, i=1, n) /)
+!     call random_seed(put = seedarr)
+!     A=0
+!    nredges = 0
+!    do i = 1, ndim-1
+!    do j = i+1, ndim
+!    call random_number(r)
+!    if (r > 0.8) then ! 0.2
+! !    write (*,*) i,j
+!    A(i,j) = hop + r-0.8
+!    A(j,i) = A(i, j)
+!    nredges = nredges + 1
+!    endif
+!    enddo
+!    enddo
+!    write (*,*) "created matrix with", nredges, "edges."
     allocate(U(ndim, ndim), vec(ndim), energ(ndim), M1(ndim, ndim), M2(ndim, ndim), M3(ndim,ndim))
     
 ! convert to the internal GraphData structure
@@ -123,7 +149,7 @@ program mscbdecomp
     else
         write(*,*) "Maximum Degree", gd%deltag, ". Found", gd%usedcolors," Families"
     endif
-    
+
 ! create an Exponential from the color information and the weights of the graph
 !
     
@@ -162,7 +188,7 @@ vec = 1.D0
    enddo
    call fe%dealloc()
    deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems)
-enddo
+!enddo ! seed loop
 ! do i = 1,80
 !    M1 = 1.D0
 !    call fe%matmult(M1)

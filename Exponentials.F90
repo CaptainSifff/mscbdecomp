@@ -40,7 +40,10 @@ module Exponentials_mod
         procedure :: init => SingleColExp_init
         procedure :: dealloc => SingleColExp_dealloc
         procedure :: vecmult => SingleColExp_vecmult
-        procedure :: matmult => SingleColExp_matmult
+        procedure :: lmult => SingleColExp_lmult
+        procedure :: lmultinv => SingleColExp_lmultinv
+        procedure :: rmult => SingleColExp_rmult
+        procedure :: rmultinv => SingleColExp_rmultinv
     end type
 
     
@@ -56,16 +59,29 @@ module Exponentials_mod
 !--------------------------------------------------------------------
     type :: EulerExp
         integer :: nrofcols
-        type(SingleColExp), dimension(:), allocatable :: singleexps
+        type(SingleColExp), allocatable :: singleexps(:)
     contains
-        procedure :: init => EulerExp_init
+         procedure :: init => EulerExp_init
         procedure :: dealloc => EulerExp_dealloc
         procedure :: vecmult => EulerExp_vecmult
         procedure :: vecmult_T => EulerExp_vecmult_T
-        procedure :: matmult => EulerExp_matmult
-        procedure :: matmult_T => EulerExp_matmult_T
+        procedure :: lmult => EulerExp_lmult
+        procedure :: lmultinv => EulerExp_lmultinv
+        procedure :: rmult => EulerExp_rmult
+        procedure :: rmultinv => EulerExp_rmultinv
+        procedure :: rmult_T => EulerExp_rmult_T
+        procedure :: lmult_T => EulerExp_lmult_T
     end type EulerExp
-    
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> This holds together a set of Euler Exponentials
+!> and applies them in the correct order to obtain higher order
+!> approximations.
+!--------------------------------------------------------------------
     type :: FullExp
         integer :: method
         integer :: evals
@@ -75,8 +91,11 @@ module Exponentials_mod
         procedure :: dealloc => FullExp_dealloc
         procedure :: vecmult => FullExp_vecmult
         procedure :: vecmult_T => FullExp_vecmult_T
-        procedure :: matmult => FullExp_matmult
-        procedure :: matmult_T => FullExp_matmult_T
+        procedure :: lmult => FullExp_lmult
+        procedure :: lmultinv => FullExp_lmultinv
+        procedure :: rmult => FullExp_rmult
+        procedure :: rmultinv => FullExp_rmultinv
+        procedure :: lmult_T => FullExp_lmult_T
     end type FullExp
     
 contains
@@ -98,9 +117,11 @@ subroutine FullExp_init(this, nodes, usedcolors, method, weight)
 #endif
     select case (method)
         case (1)! Euler
-            this%evals = 1
+            this%evals = 2
             allocate(this%stages(this%evals))
             call this%stages(1)%init(nodes, usedcolors, weight)
+            tmp = 0.D0 ! cheat to get Euler method in there
+            call this%stages(2)%init(nodes, usedcolors, tmp)
         case (2)! Strang
             this%evals = 2
             allocate(this%stages(this%evals))
@@ -167,7 +188,7 @@ subroutine FullExp_dealloc(this)
     class(FullExp) :: this
     integer :: i
     do i = 1, this%evals
-        call this%stages(i)%dealloc()
+       call this%stages(i)%dealloc()
     enddo
     deallocate(this%stages)
 end subroutine FullExp_dealloc
@@ -186,8 +207,8 @@ subroutine FullExp_vecmult(this, vec)
     class(FullExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
-    do i = 1, this%nrofcols
-        call this%singleexps(i)%vecmult(vec)
+    do i = 1, this%evals
+       call this%stages(i)%vecmult(vec)
     enddo
 end subroutine FullExp_vecmult
 
@@ -195,28 +216,59 @@ subroutine FullExp_vecmult_T(this, vec)
     class(FullExp) :: this
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
-    do i = this%nrofcols, 1, -1
-        call this%singleexps(i)%vecmult(vec)
+    do i = this%evals, 1, -1
+       call this%stages(i)%vecmult_T(vec)
     enddo
 end subroutine FullExp_vecmult_T
 
-subroutine FullExp_matmult(this, mat)
+subroutine FullExp_lmult(this, mat)
     class(FullExp) :: this
-    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    complex(kind=kind(0.D0)), intent(inout) :: mat(:,:)
     integer :: i
-    do i = 1, this%nrofcols
-        call this%singleexps(i)%matmult(mat)
+    do i = this%evals-1, 1, -2
+       call this%stages(i+1)%lmult_T(mat)
+       call this%stages(i)%lmult(mat)
     enddo
-end subroutine FullExp_matmult
+end subroutine FullExp_lmult
 
-subroutine FullExp_matmult_T(this, mat)
+subroutine FullExp_lmultinv(this, mat)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), intent(inout) :: mat(:,:)
+    integer :: i
+    do i = 1, this%evals, 2
+       call this%stages(i)%lmultinv(mat)
+       
+    enddo
+end subroutine FullExp_lmultinv
+
+subroutine FullExp_rmult(this, mat)
     class(FullExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
     integer :: i
-    do i = this%nrofcols, 1, -1
-        call this%singleexps(i)%matmult(mat)
+    do i = 1, this%evals,2
+       call this%stages(i)%rmult(mat)
+       call this%stages(i+1)%rmult_T(mat)
     enddo
-end subroutine FullExp_matmult_T
+end subroutine FullExp_rmult
+
+subroutine FullExp_rmultinv(this, mat)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), intent(inout) :: mat(:,:)
+    integer :: i
+    do i = this%evals, 1, -2
+       call this%stages(i)%rmultinv(mat)
+    enddo
+end subroutine FullExp_rmultinv
+
+subroutine FullExp_lmult_T(this, mat)
+    class(FullExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = 1, this%evals, 2
+       call this%stages(i)%lmult_T(mat)
+       call this%stages(i+1)%lmult(mat)
+    enddo
+end subroutine FullExp_lmult_T
 
 
 subroutine SingleColExp_vecmult(this, vec)
@@ -237,32 +289,100 @@ end subroutine SingleColExp_vecmult
 !> Florian Goth
 !
 !> @brief 
-!> Perform the multiplication of this exponential with a matrix.
+!> Perform the multiplication of this exponential with a matrix: out = this*mat
 !
 !> @param[in] this The exponential that we consider
 !> @param[inout] mat the matrix that we modify.
 !--------------------------------------------------------------------
-subroutine SingleColExp_matmult(this, mat)
+subroutine SingleColExp_lmult(this, mat)
     class(SingleColExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
-    integer :: i, j, k, ndim
+    integer :: i, j, k, ndim, loopend
     integer, parameter :: step = 2
     complex(kind=kind(0.D0)) :: t1(step), t2(step)
     
     ndim = size(mat,1)
-    do j = 1, ndim, step
+    loopend = (ndim/step)*step
+    do j = 1, loopend, step
         do i = 1, this%nrofentries! for every matrix
             do k = 1,step
-                t1(k) = mat(this%nodes(i)%x, j+k)
-                t2(k) = mat(this%nodes(i)%y, j+k)
+                t1(k) = mat(this%nodes(i)%x, j+k-1)
+                t2(k) = mat(this%nodes(i)%y, j+k-1)
             enddo
             do k = 1, step
-                mat(this%nodes(i)%x, j+k) = this%nodes(i)%c * t1(k) + this%nodes(i)%s* t2(k)
-                mat(this%nodes(i)%y, j+k) = this%nodes(i)%c * t2(k) + this%nodes(i)%s* t1(k)
+                mat(this%nodes(i)%x, j+k-1) = this%nodes(i)%c * t1(k) + this%nodes(i)%s* t2(k)
+                mat(this%nodes(i)%y, j+k-1) = this%nodes(i)%c * t2(k) + this%nodes(i)%s* t1(k)
             enddo
         enddo
     enddo
-end subroutine SingleColExp_matmult
+end subroutine SingleColExp_lmult
+
+subroutine SingleColExp_lmultinv(this, mat)
+    class(SingleColExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i, j, k, ndim, loopend
+    integer, parameter :: step = 2
+    complex(kind=kind(0.D0)) :: t1(step), t2(step)
+    
+    ndim = size(mat,1)
+    loopend = (ndim/step)*step
+    do j = 1, loopend, step
+        do i = 1, this%nrofentries! for every matrix
+            do k = 1,step
+                t1(k) = mat(this%nodes(i)%x, j+k-1)
+                t2(k) = mat(this%nodes(i)%y, j+k-1)
+            enddo
+            do k = 1, step
+                mat(this%nodes(i)%x, j+k-1) = this%nodes(i)%c * t1(k) - this%nodes(i)%s* t2(k)
+                mat(this%nodes(i)%y, j+k-1) = this%nodes(i)%c * t2(k) - this%nodes(i)%s* t1(k)
+            enddo
+        enddo
+    enddo
+end subroutine SingleColExp_lmultinv
+
+!--------------------------------------------------------------------
+!> @author
+!> Florian Goth
+!
+!> @brief 
+!> Perform the multiplication of this exponential with a matrix: out = mat*this
+!
+!> @param[in] this The exponential that we consider
+!> @param[inout] mat the matrix that we modify.
+!--------------------------------------------------------------------
+subroutine SingleColExp_rmult(this, mat)
+    class(SingleColExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i, j, k, ndim
+    complex(kind=kind(0.D0)) :: t1, t2
+    
+    ndim = size(mat,1)
+    do i = 1, this%nrofentries! for every matrix
+        do j = 1, ndim
+        t1 = mat(j, this%nodes(i)%x)
+        t2 = mat(j, this%nodes(i)%y)
+        mat(j, this%nodes(i)%x) = this%nodes(i)%c * t1 + this%nodes(i)%s* t2
+        mat(j, this%nodes(i)%y) = this%nodes(i)%c * t2 + this%nodes(i)%s* t1
+        enddo
+    enddo
+end subroutine SingleColExp_rmult
+
+subroutine SingleColExp_rmultinv(this, mat)
+    class(SingleColExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i, j, k, ndim
+    complex(kind=kind(0.D0)) :: t1, t2
+    
+    ndim = size(mat,1)
+    do i = 1, this%nrofentries! for every matrix
+        do j = 1, ndim
+        t1 = mat(j, this%nodes(i)%x)
+        t2 = mat(j, this%nodes(i)%y)
+        mat(j, this%nodes(i)%x) = this%nodes(i)%c * t1 - this%nodes(i)%s* t2
+        mat(j, this%nodes(i)%y) = this%nodes(i)%c * t2 - this%nodes(i)%s* t1
+        enddo
+    enddo
+end subroutine SingleColExp_rmultinv
 
 !--------------------------------------------------------------------
 !> @author
@@ -324,7 +444,7 @@ subroutine EulerExp_vecmult(this, vec)
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
     do i = 1, this%nrofcols
-        call this%singleexps(i)%vecmult(vec)
+       call this%singleexps(i)%vecmult(vec)
     enddo
 end subroutine EulerExp_vecmult
 
@@ -333,27 +453,63 @@ subroutine EulerExp_vecmult_T(this, vec)
     complex(kind=kind(0.D0)), dimension(:) :: vec
     integer :: i
     do i = this%nrofcols, 1, -1
-        call this%singleexps(i)%vecmult(vec)
+       call this%singleexps(i)%vecmult(vec)
     enddo
 end subroutine EulerExp_vecmult_T
 
-subroutine EulerExp_matmult(this, mat)
-    class(EulerExp) :: this
-    complex(kind=kind(0.D0)), dimension(:, :) :: mat
-    integer :: i
-    do i = 1, this%nrofcols
-        call this%singleexps(i)%matmult(mat)
-    enddo
-end subroutine EulerExp_matmult
-
-subroutine EulerExp_matmult_T(this, mat)
+subroutine EulerExp_lmultinv(this, mat)
     class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
     integer :: i
     do i = this%nrofcols, 1, -1
-        call this%singleexps(i)%matmult(mat)
+        call this%singleexps(i)%lmultinv(mat)
     enddo
-end subroutine EulerExp_matmult_T
+end subroutine EulerExp_lmultinv
+
+subroutine EulerExp_lmult(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = this%nrofcols, 1, -1
+        call this%singleexps(i)%lmult(mat)
+    enddo
+end subroutine EulerExp_lmult
+
+subroutine EulerExp_rmult(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%rmult(mat)
+    enddo
+end subroutine EulerExp_rmult
+
+subroutine EulerExp_rmultinv(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = this%nrofcols, 1, -1
+        call this%singleexps(i)%rmultinv(mat)
+    enddo
+end subroutine EulerExp_rmultinv
+
+subroutine EulerExp_rmult_T(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = this%nrofcols, 1, -1
+        call this%singleexps(i)%rmult(mat)
+    enddo
+end subroutine EulerExp_rmult_T
+
+subroutine EulerExp_lmult_T(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%lmult(mat)
+    enddo
+end subroutine EulerExp_lmult_T
 
 !--------------------------------------------------------------------
 !> @author
