@@ -71,6 +71,8 @@ module Exponentials_mod
         procedure :: rmultinv => EulerExp_rmultinv
         procedure :: rmult_T => EulerExp_rmult_T
         procedure :: lmult_T => EulerExp_lmult_T
+        procedure :: rmultinv_T => EulerExp_rmultinv_T
+        procedure :: lmultinv_T => EulerExp_lmultinv_T
     end type EulerExp
 
 !--------------------------------------------------------------------
@@ -237,7 +239,7 @@ subroutine FullExp_lmultinv(this, mat)
     integer :: i
     do i = 1, this%evals, 2
        call this%stages(i)%lmultinv(mat)
-       
+       call this%stages(i+1)%lmultinv_T(mat)
     enddo
 end subroutine FullExp_lmultinv
 
@@ -255,7 +257,8 @@ subroutine FullExp_rmultinv(this, mat)
     class(FullExp) :: this
     complex(kind=kind(0.D0)), intent(inout) :: mat(:,:)
     integer :: i
-    do i = this%evals, 1, -2
+    do i = this%evals-1, 1, -2
+       call this%stages(i+1)%rmultinv_T(mat)
        call this%stages(i)%rmultinv(mat)
     enddo
 end subroutine FullExp_rmultinv
@@ -461,7 +464,7 @@ subroutine EulerExp_lmultinv(this, mat)
     class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
     integer :: i
-    do i = this%nrofcols, 1, -1
+    do i = 1, this%nrofcols
         call this%singleexps(i)%lmultinv(mat)
     enddo
 end subroutine EulerExp_lmultinv
@@ -502,6 +505,15 @@ subroutine EulerExp_rmult_T(this, mat)
     enddo
 end subroutine EulerExp_rmult_T
 
+subroutine EulerExp_rmultinv_T(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = 1, this%nrofcols
+        call this%singleexps(i)%rmultinv(mat)
+    enddo
+end subroutine EulerExp_rmultinv_T
+
 subroutine EulerExp_lmult_T(this, mat)
     class(EulerExp) :: this
     complex(kind=kind(0.D0)), dimension(:, :) :: mat
@@ -511,6 +523,14 @@ subroutine EulerExp_lmult_T(this, mat)
     enddo
 end subroutine EulerExp_lmult_T
 
+subroutine EulerExp_lmultinv_T(this, mat)
+    class(EulerExp) :: this
+    complex(kind=kind(0.D0)), dimension(:, :) :: mat
+    integer :: i
+    do i = this%nrofcols, 1, -1
+        call this%singleexps(i)%lmultinv(mat)
+    enddo
+end subroutine EulerExp_lmultinv_T
 !--------------------------------------------------------------------
 !> @author
 !> Florian Goth
