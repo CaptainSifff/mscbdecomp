@@ -366,6 +366,7 @@ end subroutine SingleColExp_lmultinv
 !> The stability of this topic has been discussed in 
 !> Hargreaves, G. (2005). Topics in matrix computations: Stability and efficiency of algorithms (Doctoral dissertation, University of Manchester).
 !> and "Unifying unitary and hyperbolic transformations Adam Bojanczyka, Sanzheng Qiaob;;1, Allan O. Steinhardt"
+!> For the future we might want to look into fast hyperbolic rotations of Hargreaves, G. (2005).
 !
 !> @param[in] this The exponential that we consider
 !> @param[inout] mat the matrix that we modify.
@@ -405,8 +406,7 @@ subroutine SingleColExp_adjoint_over_two(this, mat)
             enddo
         enddo
     enddo
-    
-    
+
     ! rmultinv part
     do i = 1, this%nrofentries! for every matrix
             myc = this%c2(i)
