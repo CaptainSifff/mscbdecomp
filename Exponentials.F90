@@ -230,7 +230,6 @@ subroutine FullExp_lmult(this, mat)
     complex(kind=kind(0.D0)), intent(inout) :: mat(:,:)
     integer :: i
     do i = this%evals-1, 1, -2
-    write(*,*) i
        call this%stages(i+1)%lmult_T(mat)
        call this%stages(i)%lmult(mat)
     enddo
@@ -690,15 +689,12 @@ subroutine EulerExp_init(this, nodes, usedcolors, weight)
         colsepnodes(nodes(i)%col, edgectr(nodes(i)%col)) = nodes(i)
         edgectr(nodes(i)%col) = edgectr(nodes(i)%col) + 1
     enddo
-    do i = 1, usedcolors
-    write (filename, "(A6,I3)") "matrix", i
-    open(unit=5,file=filename)
-    do k = 1, nredges(i)
-    write (5, *) colsepnodes(i, k)%x, colsepnodes(i, k)%y, dble(colsepnodes(i, k)%axy)
-    enddo
-    enddo
 !     do i = 1, usedcolors
-!     write (*,*) edgectr(i), nredges(i)
+!     write (filename, "(A6,I3)") "matrix", i
+!     open(unit=5,file=filename)
+!     do k = 1, nredges(i)
+!     write (5, *) colsepnodes(i, k)%x, colsepnodes(i, k)%y, dble(colsepnodes(i, k)%axy)
+!     enddo
 !     enddo
     ! Now that we have properly separated which entry of a matrix belongs to
     ! which color we can create an exponential for each color that exploits
