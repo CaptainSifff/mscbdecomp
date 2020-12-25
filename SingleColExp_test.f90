@@ -43,7 +43,7 @@ program singlecolexptest
 
     ! initialize A with some data
     hop = 0.05
-! coresponds to chain with next-nearest neighbour hopping and OBC
+! corresponds to chain with next-nearest neighbour hopping and OBC
  ndim = 6
  allocate(A(ndim, ndim))
  A=0
@@ -103,8 +103,8 @@ program singlecolexptest
 ! Let's retrieve the entries from the first color
 U = 0
 do i = 1, ee%singleexps(1)%nrofentries
-U(ee%singleexps(1)%nodes(i)%x, ee%singleexps(1)%nodes(i)%y) = acosh(ee%singleexps(1)%nodes(i)%c)
-U(ee%singleexps(1)%nodes(i)%y, ee%singleexps(1)%nodes(i)%x) = acosh(ee%singleexps(1)%nodes(i)%c)
+! U(ee%singleexps(1)%x(i), ee%singleexps(1)%y(i)) = acosh(ee%singleexps(1)%c(i))
+! U(ee%singleexps(1)%y(i), ee%singleexps(1)%x(i)) = acosh(ee%singleexps(1)%c(i))
 enddo
 
 Identity=0
@@ -173,9 +173,9 @@ do i = 1, ndim
 Identity(i,i) = 1
 enddo
 
-call ee%lmult(Identity)
 call ee%lmult_T(Identity)
-   write (*,*) "======== lmult ===="
+call ee%lmult(Identity)
+   write (*,*) "======== Euler lmult ===="
 do i=1,ndim
 write (*,*) (dble(Identity(i,j)), j=1,ndim)
 enddo
@@ -187,7 +187,7 @@ enddo
 
 call ee%rmult(Identity)
 call ee%rmult_T(Identity)
-   write (*,*) "======== rmult ===="
+   write (*,*) "======== Euler rmult ===="
 do i=1,ndim
 write (*,*) (dble(Identity(i,j)), j=1,ndim)
 enddo
@@ -222,8 +222,50 @@ enddo
 M3 = M3 - Ref
 write (*,*) zlange('F', ndim, ndim, M3, ndim, lwork)
 
+! test adjoint over two
+Identity=0
+do i = 1, ndim
+Identity(i,i) = 1
+enddo
+call ee%singleexps(1)%adjoint_over_two(Identity)
 
-STOP 2   
+do i=1,ndim
+write (*,*) (dble(Identity(i,j)), j=1,ndim)
+enddo
+
+Identity=0
+do i = 1, ndim
+Identity(i,i) = 1
+enddo
+write (*,*) ee%nrofcols
+!call ee%singleexps(1)%lmult(Identity)
+!call ee%singleexps(1)%rmultinv(Identity)
+do k = 1,4
+! call ee%adjoint_over_two(Identity)
+!  call ee%adjointaction(Identity)
+call ee%singleexps(1)%adjoint_over_two(Identity)
+! do i=1,ndim
+! write (*,*) (dble(Identity(i,j)), j=1,ndim)
+! enddo
+
+call ee%singleexps(2)%adjoint_over_two(Identity)
+! do i=1,ndim
+! write (*,*) (dble(Identity(i,j)), j=1,ndim)
+! enddo
+
+call ee%singleexps(3)%adjoint_over_two(Identity)
+! do i=1,ndim
+! write (*,*) (dble(Identity(i,j)), j=1,ndim)
+! enddo
+
+call ee%singleexps(4)%adjoint_over_two(Identity)
+! do i=1,ndim
+! write (*,*) (dble(Identity(i,j)), j=1,ndim)
+! enddo
+enddo
+do i=1,ndim
+write (*,*) (dble(Identity(i,j)), j=1,ndim)
+enddo
    do i = 1, gd%ndim
     call gd%verts(i)%destruct()
    enddo

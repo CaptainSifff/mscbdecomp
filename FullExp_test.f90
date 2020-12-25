@@ -107,17 +107,18 @@ do i=1,ndim
 write (*,*) (dble(Identity(i,j)), j=1,ndim)
 enddo
 
-! test - 2 from the right
-Identity=0
-do i = 1, ndim
-Identity(i,i) = 1
-enddo
-
-call fe%rmult(Identity)
-   write (*,*) "======== rmult ==="
-do i=1,ndim
-write (*,*) (dble(Identity(i,j)), j=1,ndim)
-enddo
+! 
+! ! test - 2 from the right
+! Identity=0
+! do i = 1, ndim
+! Identity(i,i) = 1
+! enddo
+! 
+! call fe%rmult(Identity)
+!    write (*,*) "======== rmult ==="
+! do i=1,ndim
+! write (*,*) (dble(Identity(i,j)), j=1,ndim)
+! enddo
 
 ! Test 3 - compare to output of lapack routines
   dn = 3*ndim
@@ -149,11 +150,11 @@ M1 = A
 do i=1,ndim
 write (*,*) (dble(ref(i,j)), j=1,ndim)
 enddo
-M3 = M3 - Ref
+M3 = M3 - ref
 write (*,*) zlange('F', ndim, ndim, M3, ndim, lwork)
 
 
-
+STOP
 
 
 
@@ -212,6 +213,19 @@ write (*,*) (dble(ref(i,j)), j=1,ndim)
 enddo
 M3 = M3 - Ref
 write (*,*) zlange('F', ndim, ndim, M3, ndim, lwork)
+
+! Test 7 - Adjoint over two
+! test - 5 rmultinv
+Identity=0
+do i = 1, ndim
+Identity(i,i) = 1
+enddo
+
+call fe%adjoint_over_two(Identity)
+   write (*,*) "======== adjoint_over_two ==="
+do i=1,ndim
+write (*,*) (dble(Identity(i,j)), j=1,ndim)
+enddo
 
 
 
