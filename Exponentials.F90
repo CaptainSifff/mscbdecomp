@@ -146,17 +146,17 @@ subroutine FullExp_init(this, nodes, usedcolors, method, weight)
         case (4)! SE_3 4, Yoshida, Neri
             this%evals = 6
             allocate(this%stages(this%evals))
-            tmp = 0.675604*weight
+            tmp = 0.6756035959798*weight
             call this%stages(1)%init(nodes, usedcolors, tmp)
-            tmp = 0.675604*weight
+            tmp = 0.6756035959798*weight
             call this%stages(2)%init(nodes, usedcolors, tmp)
-            tmp = -0.851207*weight
+            tmp = -0.8512071919597*weight
             call this%stages(3)%init(nodes, usedcolors, tmp)
-            tmp = -0.851207*weight
+            tmp = -0.8512071919597*weight
             call this%stages(4)%init(nodes, usedcolors, tmp)
-            tmp = 0.675604*weight
+            tmp = 0.6756035959798*weight
             call this%stages(5)%init(nodes, usedcolors, tmp)
-            tmp = 0.675604*weight
+            tmp = 0.6756035959798*weight
             call this%stages(6)%init(nodes, usedcolors, tmp)
         case (5)! SE_6 4, Blanes
             this%evals = 12
@@ -230,6 +230,7 @@ subroutine FullExp_lmult(this, mat)
     complex(kind=kind(0.D0)), intent(inout) :: mat(:,:)
     integer :: i
     do i = this%evals-1, 1, -2
+    write(*,*) i
        call this%stages(i+1)%lmult_T(mat)
        call this%stages(i)%lmult(mat)
     enddo
@@ -495,12 +496,19 @@ subroutine SingleColExp_init(this, nodes, nredges, weight)
         this%p(i) = weight*nodes(i)%axy
 ! This is the order of operations that yields stable matrix inversions
         this%c(i) = cosh(weight*nodes(i)%axy)
-        this%s(i) = sqrt(this%c(i)**2-1)
         this%c2(i) = cosh(weight*nodes(i)%axy/2)
+        ! I got the most reliablle results if the hyperbolic pythagoras is best fulfilled.
+        this%s(i) = sqrt(this%c(i)**2-1)
         this%s2(i) = sqrt(this%c2(i)**2-1)
-!         this%s2(i) = sinh(weight*nodes(i)%axy/2)
-!         this%c2(i) = sqrt(1.D0+this%s2(i)**2)
-write (*,*) this%c2(i)**2-this%s2(i)**2, this%c2(i)**2 * (1-(this%s2(i)/this%c2(i))**2)
+        ! Process a_xy a little bit further to catch the different sectors in the complex plane.
+        if (dble(weight*nodes(i)%axy) < 0.0 ) then
+            this%s(i) = -this%s(i)
+            this%s2(i) = -this%s2(i)
+        endif
+        if (dble(weight*nodes(i)%axy) * aimag(weight*nodes(i)%axy) < 0.0 ) then
+            this%s(i) = conjg(this%s(i))
+            this%s2(i) = conjg(this%s2(i))
+        endif
     enddo
 ! All nodes that we have been passed are now from a single color.
 ! They constitute now a strictly sparse matrix.
