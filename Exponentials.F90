@@ -348,7 +348,7 @@ subroutine SingleColExp_lmult(this, mat)
             enddo
         enddo
     enddo
-    deallocate(xyrarray, csh, snh)
+    deallocate(xyarray, csh, snh)
 end subroutine SingleColExp_lmult
 
 subroutine SingleColExp_lmultinv(this, mat)
