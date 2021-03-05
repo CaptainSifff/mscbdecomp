@@ -1,6 +1,6 @@
 ! MIT License
 ! 
-! Copyright (c) 2018-2020 Florian Goth
+! Copyright (c) 2018-2021 Florian Goth
 !
 ! Permission is hereby granted, free of charge, to any person obtaining a copy
 ! of this software and associated documentation files (the "Software"), to deal
@@ -322,21 +322,33 @@ subroutine SingleColExp_lmult(this, mat)
     integer :: i, j, k, ndim, loopend
     integer, parameter :: step = 2 ! determined to be fastest on 6x6 hubbard
     complex(kind=kind(0.D0)) :: t1(step), t2(step)
-    
+    integer, allocatable, dimension(:) :: xyarray
+    complex(kind=kind(0.D0)), allocatable, dimension(:) :: csh, snh
+
+! The intel compiler is really helped by using these temporary arrays
+    allocate(xyarray(2*this%nrofentries), csh(this%nrofentries), snh(this%nrofentries) )
+    xyarray = this%x
+    csh = this%c
+    snh = this%s
+
     ndim = size(mat,1)
     loopend = (ndim/step)*step
+
+! ifort 2017
+!DIR$ UNROLL_AND_JAM(4)
     do j = 1, loopend, step
         do i = 1, this%nrofentries! for every matrix
             do k = 1,step
-                t1(k) = mat(this%x(2*i-1), j+k-1)
-                t2(k) = mat(this%x(2*i), j+k-1)
+                t1(k) = mat(xyarray(2*i-1), j+k-1)
+                t2(k) = mat(xyarray(2*i), j+k-1)
             enddo
             do k = 1, step
-                mat(this%x(2*i-1), j+k-1) = this%c(i) * t1(k) + this%s(i) * t2(k)
-                mat(this%x(2*i), j+k-1) = this%c(i) * t2(k) + conjg(this%s(i)) * t1(k)
+                mat(xyarray(2*i-1), j+k-1) = DBLE(csh(i)) * t1(k) + snh(i) * t2(k)
+                mat(xyarray(2*i), j+k-1) = DBLE(csh(i)) * t2(k) + conjg(snh(i)) * t1(k)
             enddo
         enddo
     enddo
+    deallocate(xyrarray, csh, snh)
 end subroutine SingleColExp_lmult
 
 subroutine SingleColExp_lmultinv(this, mat)
@@ -477,7 +489,7 @@ end subroutine SingleColExp_rmultinv
 !
 !> @brief 
 !> This sets up the data to perform the exponentiation of a 
-!> strictly sparse matrix.
+!> strictly sparse, hermitian matrix.
 !> The internal layout is that the non-zero element a_xy stored at (x,y) in the matrix
 !> has x(i) at x(2i-1) and y(i) at x(2i)
 !
@@ -503,6 +515,7 @@ subroutine SingleColExp_init(this, nodes, nredges, weight)
         this%x(2*i) = nodes(i)%y
         this%y(i) = nodes(i)%y
         this%p(i) = weight*nodes(i)%axy
+! specialized to hermitian matrices
 ! This is the order of operations that yields stable matrix inversions
         this%c(i) = cosh(abs(weight*nodes(i)%axy))
         this%c2(i) = cosh(abs(weight*nodes(i)%axy)/2)
