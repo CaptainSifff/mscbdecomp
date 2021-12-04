@@ -23,6 +23,7 @@
 program mscbdecomp
     use MvG_mod
     use Exponentials_mod
+    use graphdata_mod
     implicit none
     integer :: ndim, i, j, k, n, myl
     integer :: nredges, dn, IERR, incx, seed
@@ -65,7 +66,7 @@ program mscbdecomp
 ! A(10,6) = hop
 ! A(6,10) = hop
 
-    myl = 5
+    myl = 50
 ndim = myl*myl
 allocate(A(ndim, ndim))
 A = 0
@@ -153,7 +154,7 @@ enddo
 ! create an Exponential from the color information and the weights of the graph
 !
     
-    fe = createEulerExponentialfromGraphData(gd)
+    fe = createEulerExponentialfromGraphData(gd, energ)
 
 ! Now follows some testing and the comparison to straight-forward exponentiation via lapack
 !
@@ -183,16 +184,12 @@ vec = 1.D0
 ! ! ! ! !    write (*,*) res2
 ! ! ! !    write (*,*) "norm error: ", dznrm2(ndim, res2, incx)
 ! ! ! !    deallocate(lwork, rwork, res2)
-   do i = 1, gd%ndim
-    call gd%verts(i)%destruct()
-   enddo
-   call fe%dealloc()
-   deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems)
+
 !enddo ! seed loop
-! do i = 1,80
-!    M1 = 1.D0
-!    call fe%matmult(M1)
-! enddo
+M1 = 1.D0
+do i = 1,80
+    call fe%lmult(M1)
+enddo
 ! ! ! !   write(*,*) DBLE(M1)
 ! ! !    M2 = 1.D0
 ! ! !    call ZGEMM('C', 'N', ndim, ndim, ndim, alpha, U, ndim, M2, ndim, beta, M3, ndim)
@@ -204,4 +201,9 @@ vec = 1.D0
 ! ! ! !   write (*,*) DBLE(M2)
 ! ! !    M3 = M2-M1
 ! ! !    write (*, *) "Difference in 1-Norm:", zlange('1', ndim, ndim, M3, ndim, lwork)
+   do i = 1, gd%ndim
+    call gd%verts(i)%destruct()
+   enddo
+   call fe%dealloc()
+   deallocate(U, vec, energ, M1, M2, M3, gd%verts, gd%elems)
 end program mscbdecomp
