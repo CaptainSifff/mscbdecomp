@@ -418,7 +418,7 @@ subroutine TraceLessSingleColExp_init(this, nodes, nredges, mys, weight)
         localzero = 1E-15*frobnorm(my1, my2, nodes(i)%axy) ! definition of my local scale that defines zero
         if (abs(my1+my2) > localzero) then
             write(*,*) "[TraceLessSingleColExp_init]: Matrix not traceless. This should not happen here."
-            error stop 1
+            stop 1
         endif
         ! This is the order of operations that yields stable matrix inversions
         ! We assume that the matrix that we have decomposed is hermitian:
