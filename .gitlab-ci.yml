@@ -16,12 +16,16 @@ mscbdecomp_Jessie:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:jessie-gfortran-blas-lapack
   <<: *build_definition
 
+mscbdecomp_Stretch:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:stretch-gfortran-blas-lapack
+  <<: *build_definition
+
 mscbdecomp_Buster:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-blas-lapack
   <<: *build_definition
-  
-mscbdecomp_Stretch:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:stretch-gfortran-blas-lapack
+
+mscbdecomp_Bullseye:
+  image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:buster-gfortran-blas-lapack
   <<: *build_definition
 
 mscbdecomp_Jessie_OpenBlas:
@@ -30,10 +34,6 @@ mscbdecomp_Jessie_OpenBlas:
 
 mscbdecomp_Stretch_OpenBlas:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:stretch-gfortran-openblas-lapack
-  <<: *build_definition
-
-mscbdecomp_CentOS:
-  image: git.physik.uni-wuerzburg.de:25812/z03/pdi:centos-7-gfortran-blas-lapack
   <<: *build_definition
 
 mscbdecomp_OpenSuse-13.2:
