@@ -12,4 +12,5 @@ target_link_libraries(mscbdecomp libmscbdecomp)
 target_link_libraries(mscbdecomp ${LAPACK_LIBRARIES})
 target_link_libraries(mscbdecomp "-llapack -lblas")
 
-
+add_subdirectory(testsuite)
+enable_testing()

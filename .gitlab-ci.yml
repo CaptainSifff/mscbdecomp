@@ -66,4 +66,21 @@ mscbdecomp_Ubuntu_Xenial:
 mscbdecomp_Ubuntu_Bionic:
   image: git.physik.uni-wuerzburg.de:25812/z03/pdi/ubuntu:bionic-beaver-gfortran-lapack
   <<: *build_definition
-
+  
+mscbdecomp_tests:
+    image: git.physik.uni-wuerzburg.de:25812/z03/pdi/debian:bullseye-gfortran-lapack
+    stage: test
+    script:
+      - echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list
+      - apt-get install -y -t bullseye-backports cmake
+      - cmake -E make_directory build
+      - cd build
+      - cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RELEASE ..
+      - cmake --build . --target all --config Release
+      - ctest --version
+      - ctest -O log.txt --output-junit mscbdecomp-junit.xml
+      - cat log.txt | grep "tests passed" | cut -d " " -f 1
+    artifacts:
+      when: always
+      reports:
+        junit: ./build/mscbdecomp-junit.xml
