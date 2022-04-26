@@ -426,14 +426,14 @@ end subroutine EulerExp_lmultinv_T
 !> Florian Goth
 !
 !> @brief 
-!> A function to determine the equality of twor floating point numbers.
+!> A function to determine the equality of two floating point numbers.
 
 !> @param[in] a first number
 !> @param[in] b second number
 !> @return true if the numbers are equal up to 10^-15 of relative deviation.
 !--------------------------------------------------------------------
 function fpequal(a, b) result(isequal)
-    real(kind=kind(0.D0)), intent(in) :: a,b
+    real(kind=kind(0.D0)), intent(in) :: a, b
     logical :: isequal
     
     isequal = .true.
